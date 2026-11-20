@@ -16,16 +16,19 @@ Usage:
 --arg key=value   JSON value if it parses (numbers, true, lists), else a string. Repeat for each field.
 --file key=path   uploads the file; repeat the same key to build a list (image_urls=a.png --file image_urls=b.png).
 
-Needs FAL_KEY in the environment and `pip install fal-client`. One job at a time: wait for it, look at it,
+Needs FAL_KEY in the environment and `pip install fal-client truststore`. One job at a time: wait for it, look at it,
 then decide the next one.
 """
 import argparse
 import json
 import mimetypes
 import os
+import shutil
+import ssl
 import sys
 import time
 import urllib.request
+import truststore
 
 LIST_KEYS = ('image_urls', 'animation_action_ids', 'reference_image_urls')
 
@@ -94,7 +97,9 @@ def main():
     found = urls_in(result)
     for i, (key, url, hint) in enumerate(found):
         dest = os.path.join(a.out, name + ('' if len(found) == 1 else f'_{i}') + ext_for(url, hint))
-        urllib.request.urlretrieve(url, dest)
+        with urllib.request.urlopen(url, context=truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)) as response:
+            with open(dest, 'wb') as output:
+                shutil.copyfileobj(response, output)
         files.append({'file': dest, 'key': key, 'url': url})
 
     log_path = os.path.join(a.out, 'fal_log.json')

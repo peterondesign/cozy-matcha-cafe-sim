@@ -1,0 +1,68 @@
+/* Shared paper, ink and leaf colors across the opening, ticket and recipe folio. */
+:root{--tea-ink:#344737;--tea-paper:#fff6e2;--tea-leaf:#425e41;--tea-rule:#bdad85}
+#titleVeil{z-index:120;justify-items:start;background:#e6dbad url("assets/brand/garden-cover.webp") center / cover no-repeat}
+#titleVeil::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#fcf4dcf2 0%,#fbf1dacc 23%,#faf0d957 44%,transparent 62%);pointer-events:none}
+#titleVeil .titleCard{position:relative;text-align:left;width:min(46vw,610px);margin-left:7vw;padding:0;border:0;background:none;box-shadow:none}
+#titleVeil h1{color:#304936;font:500 clamp(62px,7.9vw,126px)/.89 Georgia,serif;letter-spacing:-.075em;text-shadow:0 1px #ffffdf}
+#titleVeil h1 em{font-weight:normal;color:#526c46}
+#titleVeil .titleCard p{margin:26px 0;color:#384939;max-width:29ch;font:clamp(15px,1.45vw,21px)/1.5 Georgia,serif}
+#beginShift,#nextCustomer{border:1px solid #314f36;background:#415f41;color:#fff8e5;border-radius:30px;box-shadow:inset 0 0 0 3px #71865b,0 3px 0 #2d432e49;padding:13px 24px;font:600 16px Georgia,serif;cursor:pointer}
+#beginShift span{margin-left:16px}
+#beginShift:hover,#nextCustomer:hover{background:#506f48}
+body[data-service="walking-in"] #customerStage{visibility:visible}
+body[data-service="walking-in"] #customerSprite{animation:tea-arrival .72s ease-out both;transform-origin:center bottom}
+@keyframes tea-arrival{0%{opacity:0;transform:translate(-40%,5%) scale(.72)}35%{opacity:1}70%{transform:translate(-8%,-1%) scale(.94)}100%{transform:none}}
+body[data-service="walking-in"] :is(.orderCard,.actionsPanel,#speechBubble,#customerName,#hint){visibility:hidden}
+#hint{display:none}
+.orderCard,.actionsPanel,.resultCard,.pantry{color:var(--tea-ink);border:1px solid #8f8661;background:linear-gradient(118deg,#fff8e8,#f8edcf);box-shadow:inset 0 0 0 3px #fff8e0,inset 0 0 0 4px #d5c6a1,0 7px 22px #342c1e36}
+.orderCard .panelTitle,.actionsPanel .actionsTitle{color:var(--tea-ink);font-weight:500}
+.orderCard .customerBadge{padding:0 0 8px;border-radius:0;background:transparent;border:0;border-bottom:1px solid #d2c5a6}
+.customerBadge img{width:50px;height:50px;object-fit:cover;object-position:50% 12%}
+.actionsPanel .action{border-radius:12px;border-width:1px}.actionsPanel .action.ready{background:#e4e9c9;border-color:#7b915d}.actionsPanel .action.done{opacity:.68}
+#speechBubble img,.drinkIcon img,.recipe-entry img,#servedPlate,.menu-bowl{mix-blend-mode:multiply}
+#servedPlate{width:clamp(80px,14vh,148px);height:clamp(80px,14vh,148px);object-fit:contain;border-radius:50%}
+#servedPlate[hidden]{display:none}
+.resultCard h2{color:var(--tea-ink)}.resultCard #resultStars{font-size:18px;color:#a88032;letter-spacing:4px}.resultCard #resultReward{font:600 16px Georgia;color:#556b42}
+.resultCard button{margin:4px}.resultCard #explorePark{background:#fff7e2;border:1px solid var(--tea-rule);box-shadow:none;font:15px Georgia}
+.resultCard .level-note{border-block:1px solid #c3b88e;padding:10px;margin:10px 0;color:#46603d;font:15px/1.4 Georgia}
+body:has(#interaction[data-tool=whisk].show) #counterBowl{pointer-events:auto;touch-action:none;cursor:ew-resize}
+#interaction[data-tool=whisk].show{display:block;width:min(310px,88vw);padding:11px 15px;border:1px solid var(--tea-rule);border-radius:16px;background:#fff6e5f5;box-shadow:0 4px 20px #3b342729;bottom:2%;top:auto}
+#interaction[data-tool=whisk] :is(.whiskDial,#interactionGif){display:none}
+#interaction[data-tool=whisk] :is(#interactionTitle,#interactionSub){padding:0;margin:0;background:none;border:0;box-shadow:none}
+#interaction[data-tool=whisk] #interactionTitle{font:600 19px Georgia;color:var(--tea-ink)}
+#interaction[data-tool=whisk] #interactionSub{margin:3px auto;font:12px/1.4 system-ui}
+#interaction[data-tool=whisk] #targetCaption{display:block;font:600 12px system-ui;color:var(--tea-leaf)}
+body:has(#interaction.show) .actionsPanel .actionsFoot{display:none}
+.pantry[data-page=recipes]{width:min(650px,94vw)}
+.recipe-entry{display:block;text-align:left;padding:0;overflow:hidden;background:#fffaea}.recipe-entry summary{display:flex;align-items:center;gap:14px;padding:8px 15px;cursor:pointer}.recipe-entry summary img{width:75px;height:75px;border-radius:50%;object-fit:cover}.recipe-entry summary strong{font:600 19px Georgia;display:block}.recipe-entry summary small{display:block;margin-top:4px}.recipe-entry summary::after{content:'＋';margin-left:auto}.recipe-entry[open] summary::after{content:'−'}
+.recipe-entry ol{margin:0 22px 14px 68px;padding-left:22px;font:14px/1.6 Georgia}.recipe-entry li{padding:2px 0}
+.pantry[data-page=pause] .menu-bowl{border-radius:50%;height:65px;width:65px;left:calc(50% - 32px);top:6px}
+@media(min-width:761px){.orderCard,.actionsPanel{width:clamp(210px,21vw,305px)}.orderCard #recipeProgress{display:none}}
+@media(max-width:760px){#titleVeil{align-items:end;background-position:65% center}#titleVeil::before{background:linear-gradient(0deg,#fff3dff7 1%,#fff3dfe6 22%,#fff3df30 55%,transparent 75%)}#titleVeil .titleCard{width:90%;margin:0 6% max(7vh,24px)}#titleVeil h1{font-size:clamp(52px,12vw,82px)}#titleVeil h1 br{display:none}#titleVeil h1 br::after{content:' '}#titleVeil h1 em{margin-left:.18em}#titleVeil .titleCard p{margin:14px 0;max-width:32ch}
+body:has(#interaction.show) .actionsPanel{visibility:hidden}#interaction[data-tool=whisk].show{bottom:8%}.recipe-entry summary img{width:58px;height:58px}}
+@media(max-height:480px){#titleVeil .titleCard{margin-bottom:18px}#titleVeil h1{font-size:52px}.resultCard{max-height:95dvh;overflow:auto}#servedPlate{width:60px;height:60px}}
+@media(prefers-reduced-motion:reduce){body[data-service="walking-in"] #customerSprite{animation:none}}
+body[data-service="walking-in"] #customerSprite{animation:tea-arrival 2.8s linear both}
+body[data-service="leaving"] #customerStage{visibility:visible}
+body[data-service="leaving"] #customerSprite{animation:tea-departure 2.2s ease-in-out both}
+body[data-service="leaving"] :is(#speechBubble,#customerName,.actionsPanel){visibility:hidden}
+@keyframes tea-departure{0%{opacity:1;transform:none}30%{opacity:1;transform:translate(12%,1%) scale(.94)}75%{opacity:1;transform:translate(45%,3%) scale(.8)}100%{opacity:0;transform:translate(65%,4%) scale(.73)}}
+.park-map .player-behind-cart{opacity:.35;transition:opacity .3s}
+.resultCard button,.pantry button{color:#344737;background:#fff8e5;border-color:#62714d}
+.resultCard #nextCustomer{color:#fffbea;background:#354f37;box-shadow:none}
+#counterBowl{width:min(36vw,42vh,420px)}#counterGlass{width:min(28vw,36vh,340px)}
+body[data-service="serving"] #counterPrep{bottom:8%}
+#interaction[data-tool=whisk] .whiskDial{display:none}
+#interaction[data-tool=whisk] .meter{display:block;margin:5px auto;max-width:220px}
+#interaction[data-tool=whisk].show{bottom:2%;width:min(310px,88vw)}
+body[data-pour="tea"] #counterPrep{gap:0}
+body[data-pour="tea"] #counterBowl{z-index:1;transform:rotate(26deg) translate(18%,2%);transform-origin:88% 24%}
+body[data-pour="tea"] #counterGlass{position:relative;z-index:2}
+.recipe-entry.locked{opacity:.72}
+.recipe-entry.locked .summary-like{display:flex;align-items:center;gap:14px;padding:8px 15px;cursor:default}
+.recipe-entry.locked .summary-like img{width:75px;height:75px;border-radius:50%;object-fit:cover}
+.recipe-entry.locked .summary-like strong{font:600 19px Georgia;display:block}
+.recipe-entry.locked .summary-like small{display:block;margin-top:4px}
+.recipe-entry.locked .summary-like::after{content:'Locked';margin-left:auto;font:600 12px system-ui;letter-spacing:.04em}
+@media(max-width:760px){#counterBowl{width:42vw}#counterGlass{width:37vw}.recipe-entry.locked .summary-like img{width:58px;height:58px}}
+@media(prefers-reduced-motion:reduce){body[data-service="leaving"] #customerSprite,body[data-service="walking-in"] #customerSprite{animation:none}}

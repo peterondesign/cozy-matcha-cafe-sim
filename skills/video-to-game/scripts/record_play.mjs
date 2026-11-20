@@ -21,7 +21,7 @@ if (!url || !playFile) { console.error('usage: node record_play.mjs URL play.mjs
 
 let chromium;
 try { ({ chromium } = await import('playwright-core')); } catch { ({ chromium } = await import('playwright')); }
-const chrome = ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium']
+const chrome = ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge', '/usr/bin/google-chrome', '/usr/bin/chromium']
   .find(p => fs.existsSync(p));
 const browser = await chromium.launch({
   executablePath: chrome, headless: true,
@@ -33,8 +33,11 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', e => errors.push(String(e)));
 page.on('console', m => m.type() === 'error' && errors.push(m.text()));
-await page.goto(url, { waitUntil: 'load', timeout: 90000 });
-await page.waitForTimeout(2500);
+await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
+// The page may rely on browser-imported engine modules. Start input only after
+// its public state contract exists so a slow CDN cannot eat the opening.
+await page.waitForFunction(() => !!window.__game?.state, null, { timeout: 90000 });
+await page.waitForTimeout(250);
 await page.mouse.click(W / 2, H / 2).catch(() => {});
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'take-'));
@@ -53,7 +56,7 @@ await cdp.send('Page.stopScreencast');
 await browser.close();
 
 if (n < 2) { console.error('no frames captured', errors.slice(0, 3)); process.exit(1); }
-const list = times.map((t, i) => `file '${String(i).padStart(5, '0')}.jpg'\nduration ${((times[i + 1] ?? t + 1 / 60) - t).toFixed(5)}`);
+const list = times.map((t, i) => `file '${String(i).padStart(5, '0')}.jpg'\nduration ${Math.max(1 / 60, (times[i + 1] ?? t + 1 / 60) - t).toFixed(5)}`);
 fs.writeFileSync(path.join(dir, 'list.txt'), list.join('\n') + `\nfile '${String(n - 1).padStart(5, '0')}.jpg'\n`);
 execFileSync('ffmpeg', ['-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', 'list.txt',
   '-vf', `scale=${W}:${H}:flags=lanczos,fps=60,format=yuv420p`, '-c:v', 'libx264', '-crf', '20', path.resolve(out)], { cwd: dir });

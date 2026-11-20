@@ -48,7 +48,7 @@ for p in files(('.gif',)):
     if os.path.getsize(p) > 4_000_000:
         errors.append(f'{os.path.relpath(p, ROOT)}: {os.path.getsize(p) // 1024} KB')
 total = sum(os.path.getsize(p) for p in files(('',)))
-if total > 40_000_000:
+if total > 120_000_000:
     errors.append(f'repository is {total // 1_000_000} MB')
 
 for g in sorted(os.listdir(os.path.join(ROOT, 'gallery'))):

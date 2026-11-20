@@ -1,0 +1,81 @@
+/* Both views of a visitor share their frame and the counter's foreground mask. */
+body[data-service="arriving"] #customerStage {visibility:visible}
+body[data-service="arriving"] #customerSprite {visibility:hidden}
+#customerStage #approachingGuest {
+  inset:auto auto 0 50%;height:100%;width:auto;max-width:100%;object-fit:contain;object-position:center bottom;
+  transform:translateX(calc(-82% + var(--arrival)*32%)) scale(calc(.36 + var(--arrival)*.64));
+}
+#interaction {
+  --olive:#536b32;--cream:#fffbe4;
+  top:57%;width:min(310px,90vw);padding:13px 19px 16px;border:2px solid #78603b;
+  background:linear-gradient(160deg,#fff7dfee,#ebd6a9fa);border-radius:22px;
+  box-shadow:inset 0 0 0 2px #fff2ce,0 4px 0 #755b3e,0 10px 24px #402c265c;
+  font-family:ui-rounded,"Trebuchet MS",system-ui,sans-serif;user-select:none;touch-action:none
+}
+#interaction.show {pointer-events:auto;cursor:pointer}
+#interactionTitle {font:800 clamp(16px,2vw,21px)/1.15 ui-rounded,"Trebuchet MS",sans-serif;color:#493b25}
+#interactionSub {font:600 12px/1.3 ui-rounded,system-ui,sans-serif;color:#5c5039;margin:5px 0 10px}
+#interactionGif {width:67px;height:62px;border:2px solid #a78c60;box-shadow:0 2px 2px #69523466}
+#interaction .meter {height:19px;background:linear-gradient(#5b4c36,#968357);border:3px solid #798a4e;border-radius:12px;box-shadow:inset 0 2px 2px #48371f,0 0 0 1px #514427,0 3px 1px #8f7750}
+#interaction .meterZone {border-radius:2px;background:repeating-linear-gradient(115deg,#bbdb66 0 4px,#9cc452 5px 8px);outline:1px solid #f6f3bd}
+#interaction .meterNeedle {width:5px;height:25px;top:-6px;transform:translateX(-50%);background:ivory;border:1px solid #4b3b28}
+#interaction .targetCaption {color:#67583b;font-weight:650}
+.whiskDial,#arcShell {
+  isolation:isolate;background:radial-gradient(circle at 50% 69%,#8ea94a,#567535 67%,#7e9b47 70%,#aac66d 96%);
+  border:2px solid #524c27;border-radius:50%;box-shadow:inset 0 1px 1px #e5edaa,inset 0 -4px 1px #718942,0 3px 0 #65572f,0 5px 9px #55392057;
+}
+.whiskDial {position:relative;display:none;width:114px;height:114px;margin:0 auto 10px}
+#interaction[data-tool="whisk"] .whiskDial {display:block}
+#interaction[data-tool="whisk"] #interactionGif,#interaction.precisionMode #interactionGif,#interaction.precisionMode #targetCaption {display:none}
+.whiskDial::before {content:'';position:absolute;inset:6%;border-radius:50%;background:conic-gradient(from 230deg,#fffde9 0deg 174.2deg,#b4d55e 174.2deg 192.4deg,#655536 192.4deg 260deg,transparent 260deg);mask:radial-gradient(circle,transparent 53%,#000 55%)}
+.whiskDial i {position:absolute;inset:6%;transform:rotate(var(--whisk-angle,-130deg))}
+.whiskDial i::before {content:'';position:absolute;left:47%;top:0;border-radius:50%;width:7%;height:23%;background:#fff;box-shadow:0 0 0 1px #605834,0 1px 3px #412f1c}
+.whiskDial b,.arcCenter,.arcCenter small {color:#fffbea;font-family:ui-rounded,"Trebuchet MS",sans-serif;font-weight:900;text-shadow:0 2px 1px #43391d,-1px 0 #504323,1px 0 #504323}
+.whiskDial b {position:absolute;bottom:14%;left:0;right:0;text-transform:uppercase;font-size:13px;letter-spacing:.035em}
+#arcShell {width:clamp(112px,19vh,158px);height:auto;aspect-ratio:1;margin:6px auto 2px}
+#arcShell svg {display:block}
+#arcShell .arcTrack {stroke:#564a30;stroke-width:19}
+#arcShell .arcTarget {stroke:#e4b648;stroke-width:25;stroke-dasharray:7 565;stroke-dashoffset:-431;stroke-linecap:butt;filter:none}
+#arcShell .arcFill {stroke:#fffde9;stroke-width:17;stroke-linecap:butt}
+#arcShell .arcCenter small {font-size:8px;letter-spacing:.03em;max-width:75px}
+#arcShell .arcTargetHint {display:none}
+@media(max-height:530px){#interaction{top:51%;padding:8px 14px}#interaction .whiskDial{width:74px;height:74px}#interactionSub{margin:3px 0 5px}}
+#titleVeil.hidden,#resultVeil.hidden {visibility:hidden}
+#counterBowl{width:min(30vw,33vh,300px)}#counterGlass{width:min(19vw,24vh,205px)}#counterPrep{bottom:10%;max-width:55vw;gap:.6vw}.orderCard,.actionsPanel{width:min(21vw,282px);padding:clamp(8px,1vw,15px);overflow-x:hidden}.actionList{display:grid;grid-template-columns:minmax(0,1fr);overflow-x:hidden;max-height:54vh;overflow-y:auto}.action{min-width:0;width:100%;padding:5px}.actionLabel{min-width:0;white-space:normal}.actionsTitle,.panelTitle{font-size:clamp(17px,2vw,28px)}.actionIcon{width:38px;height:38px}.actionsFoot{white-space:normal}.hud{font-size:.87em}#toast{top:19%;bottom:auto;pointer-events:none}#interaction{top:38%;width:min(240px,42vw)}#leaveWaitingCart{bottom:14px;left:14px;transform:none;z-index:30;min-height:42px}
+@media(max-width:760px){.orderCard{top:12%;width:35vw;height:auto;max-height:21vh;overflow:auto}.actionsPanel{top:auto;bottom:56px;width:min(38vw,185px);max-height:34vh;right:4px;left:auto}.actionList{max-height:23vh}.action{flex:none;min-width:0}.actionsFoot,.actionKey,.actionsTitle .recipeBadge{display:none}.actionIcon{width:23px;height:23px}.actionLabel{font-size:11px}#counterPrep{left:39%;bottom:23%}#counterBowl{width:39vw}#counterGlass{width:23vw}#interaction{left:auto;right:3px;top:15%;transform:none;width:min(47vw,210px)}#interaction .whiskDial,#arcShell{width:72px;height:72px}#toast{top:9%;font-size:12px}}
+.cart-lights,.cart-flowers,.tea-table,.cart-board{display:none;pointer-events:none}body[data-upgrades~="lights"] .cart-lights,body[data-upgrades~="flowers"] .cart-flowers,body[data-upgrades~="tea-table"] .tea-table,body[data-upgrades~="sign"] .cart-board{display:block}.pov-lights{position:absolute;top:6%;left:22%;width:46%;height:auto;z-index:3;filter:drop-shadow(0 4px 3px #5c463044)}.pov-flowers{position:absolute;bottom:7%;left:20%;width:92px;height:auto;z-index:7;filter:drop-shadow(0 4px 3px #5c463044)}.pov-board{position:absolute;right:7%;bottom:24%;width:78px;height:auto;z-index:6;filter:drop-shadow(0 4px 3px #5c463044)}.pov-table{position:absolute;right:16%;bottom:11%;width:168px;height:auto;z-index:5;filter:drop-shadow(0 6px 4px #5c463055)}.park-interact{right:auto;bottom:auto;transform:translateX(-50%);min-height:52px;padding:9px 16px;white-space:nowrap}.park-interact::after{content:'';position:absolute;bottom:-6px;left:48%;width:10px;height:10px;background:#fff3d7;transform:rotate(45deg)}.park-interact b{font-size:21px}.seat-view,.seat-pov button{padding:10px 16px;border-radius:20px;border:1px solid #968455;background:#fff1cd;color:#463820;font:600 16px Georgia}.seat-view{position:absolute;right:16px;bottom:145px}.seat-pov{padding:0;border:0;width:100vw;height:100dvh;max-width:none;max-height:none}.seat-pov canvas{width:100%;height:100%;touch-action:none}.seat-pov nav{position:absolute;bottom:5%;width:100%;display:flex;justify-content:center;gap:8px}.pause-links{display:grid;gap:10px;max-width:340px;margin:auto}.pantry.harvest{max-width:670px}.harvest-info{display:flex;justify-content:space-between}.harvest-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin-top:12px}.harvest-grid button{aspect-ratio:1;padding:3px;border-radius:8px;background:#f7e5bc}.harvest-grid img{width:100%;height:100%;object-fit:contain;mix-blend-mode:normal;border-radius:8px}.harvest-grid .picked{outline:3px solid #78883e;z-index:1}.tea-seats{display:none;pointer-events:none}body[data-upgrades~="tea-table"] .tea-seats,body[data-upgrades~="seats"] .tea-seats{display:block}body:has(dialog[open]) *:not(dialog,dialog *){animation-play-state:paused!important}
+/* The dial sits with the tools on the worktop, leaving the guest's face visible. */
+#interaction.show {top:auto;bottom:5%;left:50%;transform:translateX(-50%);width:min(360px,89vw)}
+#interaction[data-tool="whisk"],#interaction.precisionMode {
+  display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto;
+  column-gap:12px;align-items:end;text-align:left;border:0;border-radius:0;background:none;box-shadow:none;padding:0;
+}
+#interaction.precisionMode #targetCaption {display:none!important}
+#interaction[data-tool="whisk"] #meter{display:block!important;grid-column:1 / -1;margin:8px 0 0;max-width:none}
+#interaction[data-tool="whisk"] #targetCaption{display:flex!important;grid-column:1 / -1;justify-content:space-between}
+#interaction:is([data-tool="whisk"],.precisionMode) #interactionTitle {
+  grid-column:2;grid-row:1;align-self:end;margin:0;padding:9px 12px 2px;border-radius:12px 12px 0 0;
+  border:1px solid #967c53;border-bottom:0;background:#fff4d9;font-size:16px
+}
+#interaction:is([data-tool="whisk"],.precisionMode) #interactionSub {
+  grid-column:2;grid-row:2;align-self:start;margin:0;padding:0 12px 8px;border-radius:0 0 12px 12px;
+  border:1px solid #967c53;border-top:0;background:#fff4d9;box-shadow:0 3px 0 #75573747
+}
+#interaction[data-tool="whisk"] .whiskDial,#interaction.precisionMode #arcShell {
+  grid-column:1;grid-row:1/3;align-self:center;margin:0;width:clamp(105px,16vh,144px);height:auto;aspect-ratio:1
+}
+.whiskDial svg {position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.whiskDial text {fill:#fffee8;stroke:#51482c;stroke-width:2.3px;paint-order:stroke;font:900 12px ui-rounded,"Trebuchet MS",sans-serif;letter-spacing:.065em}
+.whiskDial::after {content:'✦';position:absolute;left:59%;top:27%;font-size:13px;color:#fbffde;text-shadow:0 0 6px #f8ffddaa}
+body:has(#interaction.show) #hint {visibility:hidden}
+@media(max-width:700px){#interaction.show{bottom:9%}}
+@media(max-height:480px){#interaction.show{bottom:3%}#interaction[data-tool="whisk"] .whiskDial,#interaction.precisionMode #arcShell{width:90px}}
+.actionsTitle{display:flex;flex-wrap:wrap;gap:4px;align-items:center}.actionsPanel *{max-width:100%;box-sizing:border-box}.actionsPanel{scrollbar-width:thin}.orderCard .customerBadge,.drinkCard{min-width:0}.park-map [data-model] .approach-ground{stroke-width:.7}
+@media(max-width:760px){
+  body[data-service="serving"] .topCenter{width:max-content;max-width:76vw;left:6px;top:6px;transform:none;padding:6px 9px}.topCenter .statusChip{display:none}.coinsHud{top:6px;right:6px;left:auto;width:auto;min-width:60px;padding:5px 9px}.qualityHud{top:40px;right:6px;width:86px;padding:4px 8px}
+  body[data-service="serving"] .orderCard{top:44px;left:6px;right:auto;width:min(62vw,255px);max-height:none;padding:6px 9px;border-radius:12px;overflow:hidden}.orderCard .panelTitle,.orderCard .customerBadge,.orderCard .stepRail,.orderCard .recipeProgress,.orderCard .orderFooter,.orderCard #recipeProgressText,.orderCard .progressLabel,.orderCard .orderFoot,.orderCard .orderDots,.orderCard #recipeProgress,.orderCard #stepRail{display:none}.orderCard .drinkCard{margin:0;padding:0;border:0;background:none}.orderCard .drinkText small{display:none}.orderCard .drinkText strong,.orderCard .drinkText b{font-size:14px}.orderCard .drinkIcon{width:32px;height:32px}.orderCard>:not(.drinkCard){display:none}
+  #customerStage{width:62vw;height:48vh;bottom:29%}#speechBubble{transform:scale(.72);transform-origin:top right}.actionsPanel{left:6px;right:6px;bottom:49px;top:auto;transform:none;width:auto;padding:6px 10px;border-radius:14px;max-height:18vh}.actionsTitle{font-size:13px;margin:0 0 3px}.actionList{display:flex;flex-direction:column;max-height:11vh;overflow-y:auto;overflow-x:clip}.actionList .action{display:none}.actionList .action.ready,.actionList:not(:has(.ready)) .action:not(.done):first-of-type,.actionList:not(:has(.ready)) .action.done+.action:not(.done){display:flex;width:100%;margin:0;min-height:36px}.actionLabel{font-size:14px}.actionIcon{width:30px;height:30px}#counterPrep{left:50%;bottom:22%;width:max-content;max-width:89vw}#counterGlass{width:min(33vw,22vh)}#counterBowl{width:min(49vw,30vh)}#interaction{top:17%;left:50%;right:auto;transform:translateX(-50%);width:min(63vw,230px)}#hint{display:none}#toast{top:auto;bottom:17%;max-width:86vw}
+}
+.pov-table,.pov-board,.pov-flowers,.pov-lights{position:absolute;pointer-events:none}.pov-table{left:auto;right:17%;bottom:16%;width:12%;z-index:5}.pov-board{right:8%;bottom:30%;width:6.2%;z-index:6}.pov-flowers{left:19%;bottom:16%;width:7%;z-index:7}.pov-lights{left:22%;top:6%;width:46%;z-index:3}body[data-service="serving"] #customerName{display:none}@media(min-width:761px) and (max-width:1280px){.topCenter .statusChip{display:none}.topCenter{width:auto}}@media(max-width:760px){.coinsHud{height:32px}.qualityHud{top:44px}}
+body .rewardCoin{width:25px;height:25px;border:3px double #a77a26;background-image:radial-gradient(circle at 35% 30%,#ffea95,#edbd49 65%,#be8429)}
+.orderCard #qualityHud{display:flex;position:static;inset:auto;width:auto;min-height:0;align-items:center;justify-content:space-between;gap:8px;margin:5px 0 0;padding:2px 0;border:0;box-shadow:none;background:none;transform:none;font-size:10px}.orderCard #qualityHud .qualityRail{width:38%}

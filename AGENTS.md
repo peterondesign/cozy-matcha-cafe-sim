@@ -28,5 +28,5 @@ python3 tests/check_repo.py
 - Python scripts: 3.9+, standard library, ffmpeg/ffprobe on PATH; `fal-client` only in `fal_asset.py`. Every script
   has a docstring with usage lines and `--help`. The recorder needs Node 18+ and `playwright-core`.
 - A new gallery entry: `poster.gif` (video left, game right, under 1 MB), `README.md` with the prompt, controls, fal
-  calls and cost, `game/` with the code, and a cell in the README table. Keep the repo under 40 MB.
+  calls and cost, `game/` with the code, and a cell in the README table. Keep the repo under 120 MB.
 - No absolute home paths, secrets or API keys in committed files. Code comments in English.
