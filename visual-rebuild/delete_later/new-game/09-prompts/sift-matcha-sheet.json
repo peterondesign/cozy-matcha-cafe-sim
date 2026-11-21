@@ -1,0 +1,10 @@
+{
+  "prompt": "Create a precise 4 by 4 animation sprite sheet for a cozy matcha cafe game. Exactly sixteen equal sequential frames ordered left-to-right then top-to-bottom. Show one continuous matcha-sifting action: measured matcha above a fine sieve over an empty cream chawan, powder enters the sieve, a feminine hand in a sage kimono sleeve taps the sieve, fine green powder progressively falls, and the sequence ends with a neat smooth matcha mound in the bowl. Fixed close-up camera above the same honey-wood counter. Identical bowl position, hand design, tool scale, lighting, crop and shadows in every frame. Same polished hand-painted Japanese storybook style as the reference, clean brown outlines and cream ceramic bowl with sage leaf motif. Keep every object inside its cell. Uniform flat warm cream background. No cell borders, numbers, labels, captions, UI, extra tools, changing bowl shape, malformed hands or watermark.",
+  "image_input": [
+    "https://replicate.delivery/pbxt/QBrVb4unqh78kK4zhQBkLCEbjLsUVJgQ5WDCUy4VffNCb2Fw/first-game-screen.webp"
+  ],
+  "layer_decomposition": false,
+  "size": "2K",
+  "aspect_ratio": "1:1",
+  "output_format": "png"
+}

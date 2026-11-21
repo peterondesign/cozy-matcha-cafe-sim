@@ -1,0 +1,8 @@
+{
+  "prompt": "Turn this resume-game cafe screen into a clean closed-stall plate. Remove the customer, bag, speech bubble, lettering, drink illustration, open sign, loose petals, and every counter object and tool. Leave the timber stall, noren, lantern, garden, and a completely bare counter. Keep the exact camera, 16:9 crop, honey timber, sage noren, paper lantern, cherry branches, garden, bridge, pond, and soft morning light of the reference. Warm hand-painted anime storybook style, clean brown outlines. Pixel-aligned edit of this screenshot. No new objects, no text, no UI, no watermark, no photography.",
+  "image_input": [
+    "https://api.replicate.com/v1/files/ODdmNjJkMjYtNTFlMC00YjM4LWEzNjUtYjliYjcwYjg5NmI0.webp"
+  ],
+  "aspect_ratio": "match_input_image",
+  "output_format": "png"
+}

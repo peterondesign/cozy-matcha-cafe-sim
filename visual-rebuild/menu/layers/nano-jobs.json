@@ -1,0 +1,26 @@
+{
+  "bg": {
+    "id": "883c2f169hrmy0d1zt3v0vzvhc",
+    "status": "starting",
+    "get": "https://api.replicate.com/v1/predictions/883c2f169hrmy0d1zt3v0vzvhc",
+    "error": null
+  },
+  "sheet-panel": {
+    "id": "8aytnmsgm5rmw0d1zt3vzs1v0r",
+    "status": "starting",
+    "get": "https://api.replicate.com/v1/predictions/8aytnmsgm5rmw0d1zt3vzs1v0r",
+    "error": null
+  },
+  "sheet-buttons": {
+    "id": "pqmxsj1xtdrmw0d1zt3se5aba8",
+    "status": "starting",
+    "get": "https://api.replicate.com/v1/predictions/pqmxsj1xtdrmw0d1zt3se5aba8",
+    "error": null
+  },
+  "sheet-footer": {
+    "id": "aekb6taag5rmw0d1zt3vys78pr",
+    "status": "starting",
+    "get": "https://api.replicate.com/v1/predictions/aekb6taag5rmw0d1zt3vys78pr",
+    "error": null
+  }
+}

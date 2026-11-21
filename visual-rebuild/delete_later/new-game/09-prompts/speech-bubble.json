@@ -1,0 +1,9 @@
+{
+  "prompt": "Create and isolate one empty cream dialogue speech bubble matching this cozy Japanese storybook game. Wide rounded organic parchment shape, lower-left tail, tea-brown double hand-drawn outline, subtle paper texture, shallow warm shadow and one restrained sage leaf ornament. Remove all words, letters, drink art, character art, buttons, flowers, emphasis marks and background. Decompose into editable layers: clean bubble base, outline, ornament and shadow. Preserve generous transparent padding.",
+  "image_input": [
+    "https://replicate.delivery/pbxt/QBrVb4unqh78kK4zhQBkLCEbjLsUVJgQ5WDCUy4VffNCb2Fw/first-game-screen.webp"
+  ],
+  "layer_decomposition": true,
+  "size": "2K",
+  "output_format": "png"
+}

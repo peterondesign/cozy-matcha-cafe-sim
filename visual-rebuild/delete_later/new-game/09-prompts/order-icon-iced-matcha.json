@@ -1,0 +1,9 @@
+{
+  "prompt": "Create one isolated iced matcha latte order icon matching this game's polished hand-painted cozy Japanese storybook style. Show a clear tall glass in straight-on three-quarter view with visible ice, creamy milk below, vivid layered matcha above, subtle condensation and a separate soft contact shadow. Clean dark tea-brown outline, cream highlights, restrained matcha green palette, readable at 96 pixels. No hands, straw, words, badge, speech bubble, flowers, UI, background or watermark. Decompose into editable layers: glass, ice, milk, matcha layer, condensation and shadow.",
+  "image_input": [
+    "https://replicate.delivery/pbxt/QBrVb4unqh78kK4zhQBkLCEbjLsUVJgQ5WDCUy4VffNCb2Fw/first-game-screen.webp"
+  ],
+  "layer_decomposition": true,
+  "size": "2K",
+  "output_format": "png"
+}

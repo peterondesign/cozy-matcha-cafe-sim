@@ -1,0 +1,26 @@
+{
+  "name": "pour-milk",
+  "id": "8cseehq1ahrmr0d1zt2tzyf218",
+  "status": "succeeded",
+  "model": "bytedance/seedream-5-pro",
+  "input": {
+    "prompt": "Create a precise 4 by 4 animation sprite sheet for a cozy matcha cafe game. Exactly sixteen equal sequential frames, ordered left to right then top to bottom. One continuous physical action from the untouched starting state to the settled final state. Fixed close-up camera above the same honey-wood counter. Same cream ceramic ware, same feminine barista hands in sage kimono sleeves, same soft morning light, same scale, same shadows, same warm hand-painted anime storybook style as the reference. Keep every object inside its cell. No cell borders, no text, no numbers, no labels, no UI. Flat uniform cream background. Show the milk bottle tilting and pouring a white stream into the iced glass until the milk stops below the rim.",
+    "image_input": [
+      "https://api.replicate.com/v1/files/ODdmNjJkMjYtNTFlMC00YjM4LWEzNjUtYjliYjcwYjg5NmI0.webp"
+    ],
+    "layer_decomposition": false,
+    "size": "2K",
+    "aspect_ratio": "1:1",
+    "output_format": "png"
+  },
+  "output": [
+    "https://replicate.delivery/xezq/lgunbHkfxKxkWagQjMBevsE2dM35O0DrWY2dHEn0VmlH41jXA/tmpegpbjac8.png"
+  ],
+  "metrics": {
+    "image_output_count": 1,
+    "predict_time": 139.676551111,
+    "resolution_target": "2K",
+    "total_time": 139.689424634
+  },
+  "error": null
+}

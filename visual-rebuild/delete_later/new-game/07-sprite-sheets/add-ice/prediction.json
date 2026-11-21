@@ -1,0 +1,26 @@
+{
+  "name": "add-ice",
+  "id": "q2yg8c8ymxrmr0d1zt9sbwfnm8",
+  "status": "succeeded",
+  "model": "bytedance/seedream-5-pro",
+  "input": {
+    "prompt": "Create a precise 4 by 4 animation sprite sheet for a cozy matcha cafe game. Exactly sixteen equal cells, ordered left to right then top to bottom, one continuous action. Same warm hand-painted anime storybook style as the reference, clean brown outlines, soft morning light. Flat uniform cream background in every cell. Identical camera, scale, and crop. Show only the objects named below. No hands, no fingers, no arms, no sleeves, no person, no face. No extra tools, bottles, bowls, flowers, petals, trays, kettles, or counter clutter beyond the named objects. No cell borders, text, numbers, labels, or UI. Only one tall clear glass and ice cubes. Cubes fall from above the rim and fill the glass in even steps. No bowl, no hands, no other props.",
+    "image_input": [
+      "https://api.replicate.com/v1/files/ODdmNjJkMjYtNTFlMC00YjM4LWEzNjUtYjliYjcwYjg5NmI0.webp"
+    ],
+    "layer_decomposition": false,
+    "size": "2K",
+    "aspect_ratio": "1:1",
+    "output_format": "png"
+  },
+  "output": [
+    "https://replicate.delivery/xezq/f8wQeEfny3S5VI68LRFCR4be9xXaEt4AaWAWnacDHfsBpwe4F/tmp3frla_eh.png"
+  ],
+  "metrics": {
+    "image_output_count": 1,
+    "predict_time": 104.03417602,
+    "resolution_target": "2K",
+    "total_time": 104.047718524
+  },
+  "error": null
+}

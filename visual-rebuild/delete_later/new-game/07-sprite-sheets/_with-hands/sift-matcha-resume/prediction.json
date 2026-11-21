@@ -1,0 +1,26 @@
+{
+  "name": "sift-matcha",
+  "id": "jdvekef70drmw0d1zt4s0r510w",
+  "status": "succeeded",
+  "model": "bytedance/seedream-5-pro",
+  "input": {
+    "prompt": "Create a precise 4 by 4 animation sprite sheet for a cozy matcha cafe game. Exactly sixteen equal sequential frames, ordered left to right then top to bottom. One continuous physical action from the untouched starting state to the settled final state. Fixed close-up camera above the same honey-wood counter. Same cream ceramic ware, same feminine barista hands in sage kimono sleeves, same soft morning light, same scale, same shadows, same warm hand-painted anime storybook style as the reference. Keep every object inside its cell. No cell borders, no text, no numbers, no labels, no UI. Flat uniform cream background. Show measured matcha entering a fine sieve over an empty cream chawan, the sieve tapped by a sage sleeve, fine powder falling, and a smooth mound forming.",
+    "image_input": [
+      "https://api.replicate.com/v1/files/ODdmNjJkMjYtNTFlMC00YjM4LWEzNjUtYjliYjcwYjg5NmI0.webp"
+    ],
+    "layer_decomposition": false,
+    "size": "2K",
+    "aspect_ratio": "1:1",
+    "output_format": "png"
+  },
+  "output": [
+    "https://replicate.delivery/xezq/gatJ9Z96mbLeNK5AVuj1cP9rIvdD5ttAKGMVIM0jFIKBe1jXA/tmpfncodsct.png"
+  ],
+  "metrics": {
+    "image_output_count": 1,
+    "predict_time": 126.020682673,
+    "resolution_target": "2K",
+    "total_time": 126.036905743
+  },
+  "error": null
+}

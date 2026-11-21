@@ -1,0 +1,14 @@
+{
+  "desk-full": {
+    "id": "3jywsx5d85rmy0d1zsvvbzxvdw",
+    "status": "starting",
+    "get": "https://api.replicate.com/v1/predictions/3jywsx5d85rmy0d1zsvvbzxvdw",
+    "error": null
+  },
+  "phone-full": {
+    "id": "t0wcspnm99rmw0d1zsvrqe91p8",
+    "status": "starting",
+    "get": "https://api.replicate.com/v1/predictions/t0wcspnm99rmw0d1zsvrqe91p8",
+    "error": null
+  }
+}

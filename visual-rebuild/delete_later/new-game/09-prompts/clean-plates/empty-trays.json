@@ -1,0 +1,8 @@
+{
+  "prompt": "Turn this resume-game cafe screen into a clean preparation plate. Remove the customer, bag, speech bubble, lettering, drink illustration, loose petals, and all loose tools and ingredients. Keep the wooden counter, two sage-leaf mats, left tool tray, and right ingredient tray, all empty. Keep the exact camera, 16:9 crop, honey timber, sage noren, paper lantern, cherry branches, garden, bridge, pond, and soft morning light of the reference. Warm hand-painted anime storybook style, clean brown outlines. Pixel-aligned edit of this screenshot. No new objects, no text, no UI, no watermark, no photography.",
+  "image_input": [
+    "https://api.replicate.com/v1/files/ODdmNjJkMjYtNTFlMC00YjM4LWEzNjUtYjliYjcwYjg5NmI0.webp"
+  ],
+  "aspect_ratio": "match_input_image",
+  "output_format": "png"
+}

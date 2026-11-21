@@ -1,0 +1,23 @@
+{
+  "name": "empty-counter",
+  "id": "vxqtabqksdrmr0d1zszrdh38ec",
+  "status": "succeeded",
+  "model": "google/nano-banana-2-lite",
+  "input": {
+    "prompt": "Turn this resume-game cafe screen into a clean plate. Remove the customer, bag, speech bubble, all lettering, the drink illustration, loose petals, and every object sitting on the counter: matcha tin, whisk, sieve, chawan, glass, kettle, steam, ice bowl, milk bottle, and oat milk bottle. Rebuild the bare wooden counter and empty mats where those objects were. Keep the exact camera, 16:9 crop, honey timber, sage noren, paper lantern, cherry branches, garden, bridge, pond, and soft morning light of the reference. Warm hand-painted anime storybook style, clean brown outlines. Pixel-aligned edit of this screenshot. No new objects, no text, no UI, no watermark, no photography.",
+    "image_input": [
+      "https://replicate.delivery/pbxt/QBrVb4unqh78kK4zhQBkLCEbjLsUVJgQ5WDCUy4VffNCb2Fw/first-game-screen.webp"
+    ],
+    "aspect_ratio": "match_input_image",
+    "output_format": "png"
+  },
+  "output": [
+    "https://replicate.delivery/xezq/6wsZG1qpB1aKN5wGdDvyaq9XDFNTNJgS9mBfKKIn341ev1jXA/tmp53ca9fhg.png"
+  ],
+  "metrics": {
+    "image_output_count": 1,
+    "predict_time": 4.854578489,
+    "total_time": 4.870043721
+  },
+  "error": null
+}

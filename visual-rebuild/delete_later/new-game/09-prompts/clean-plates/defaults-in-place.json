@@ -1,0 +1,8 @@
+{
+  "prompt": "Turn this resume-game cafe screen into a clean plate with the counter set in its default resting state. Remove only the customer, bag, speech bubble, all lettering, and the drink illustration, and rebuild the garden behind her. Leave the matcha tin, bamboo whisk, sieve, empty chawan, empty tall glass, kettle, ice bowl, milk bottle, and oat milk bottle exactly where they already rest. Keep the exact camera, 16:9 crop, honey timber, sage noren, paper lantern, cherry branches, garden, bridge, pond, and soft morning light of the reference. Warm hand-painted anime storybook style, clean brown outlines. Pixel-aligned edit of this screenshot. No new objects, no text, no UI, no watermark, no photography.",
+  "image_input": [
+    "https://api.replicate.com/v1/files/ODdmNjJkMjYtNTFlMC00YjM4LWEzNjUtYjliYjcwYjg5NmI0.webp"
+  ],
+  "aspect_ratio": "match_input_image",
+  "output_format": "png"
+}

@@ -1,0 +1,17 @@
+{
+  "park-day": {
+    "id": "dgqgdqr2mnrmt0d1zyfan24hp4",
+    "status": "starting",
+    "get": "https://api.replicate.com/v1/predictions/dgqgdqr2mnrmt0d1zyfan24hp4"
+  },
+  "park-night": {
+    "id": "03apyyh8zhrmy0d1zyfbcewx6w",
+    "status": "starting",
+    "get": "https://api.replicate.com/v1/predictions/03apyyh8zhrmy0d1zyfbcewx6w"
+  },
+  "hud-sheet": {
+    "id": "84txwnth9srmw0d1zyf8e33kt4",
+    "status": "starting",
+    "get": "https://api.replicate.com/v1/predictions/84txwnth9srmw0d1zyf8e33kt4"
+  }
+}

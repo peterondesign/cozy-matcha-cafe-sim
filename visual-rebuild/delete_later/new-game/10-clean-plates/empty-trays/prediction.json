@@ -1,0 +1,23 @@
+{
+  "name": "empty-trays",
+  "id": "r0d4spe2hnrmy0d1zt2rz9k1nr",
+  "status": "succeeded",
+  "model": "google/nano-banana-2-lite",
+  "input": {
+    "prompt": "Turn this resume-game cafe screen into a clean preparation plate. Remove the customer, bag, speech bubble, lettering, drink illustration, loose petals, and all loose tools and ingredients. Keep the wooden counter, two sage-leaf mats, left tool tray, and right ingredient tray, all empty. Keep the exact camera, 16:9 crop, honey timber, sage noren, paper lantern, cherry branches, garden, bridge, pond, and soft morning light of the reference. Warm hand-painted anime storybook style, clean brown outlines. Pixel-aligned edit of this screenshot. No new objects, no text, no UI, no watermark, no photography.",
+    "image_input": [
+      "https://api.replicate.com/v1/files/ODdmNjJkMjYtNTFlMC00YjM4LWEzNjUtYjliYjcwYjg5NmI0.webp"
+    ],
+    "aspect_ratio": "match_input_image",
+    "output_format": "png"
+  },
+  "output": [
+    "https://replicate.delivery/xezq/uxeoqUzQlX0uZifJBe3QpCj64LNFk1fbTe0r09UNLaWRvue4F/tmpcyjnq3xv.png"
+  ],
+  "metrics": {
+    "image_output_count": 1,
+    "predict_time": 5.361772043,
+    "total_time": 5.375298515
+  },
+  "error": null
+}

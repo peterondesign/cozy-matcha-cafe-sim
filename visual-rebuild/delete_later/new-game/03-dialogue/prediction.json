@@ -1,0 +1,29 @@
+{
+  "name": "speech-bubble",
+  "id": "yjgtgfaes1rmw0d1zs593k4xrm",
+  "status": "succeeded",
+  "model": "bytedance/seedream-5-pro",
+  "input": {
+    "prompt": "Create and isolate one empty cream dialogue speech bubble matching this cozy Japanese storybook game. Wide rounded organic parchment shape, lower-left tail, tea-brown double hand-drawn outline, subtle paper texture, shallow warm shadow and one restrained sage leaf ornament. Remove all words, letters, drink art, character art, buttons, flowers, emphasis marks and background. Decompose into editable layers: clean bubble base, outline, ornament and shadow. Preserve generous transparent padding.",
+    "image_input": [
+      "<source-image-url>"
+    ],
+    "layer_decomposition": true,
+    "size": "2K",
+    "output_format": "png"
+  },
+  "output": [
+    "https://replicate.delivery/xezq/IH1QhB0Z8PJWIJQpPOeM9y7sbNAc1QfeeJvKWIrzkEpuoTPeC/tmpsdqe7r6n.png",
+    "https://replicate.delivery/xezq/XEAMrj1FhoaHMZKCj2mescS0PHF7zYFiE8WHp0gxWrrFd6xLA/tmptn1tf8_7.png",
+    "https://replicate.delivery/xezq/CmP7fkdnzDw1KqfIycKtzb90C4q1IIiMpS0rxzW2bAuL60jXA/tmp86hq1667.png",
+    "https://replicate.delivery/xezq/i5Ig7VgnLPJZGtfuA3kPl5Sm82Z2hQdqK3o8B4atpoxFd6xLA/tmp6w66gl8t.png",
+    "https://replicate.delivery/xezq/GPJbNrg8YjJBDlJhqz8ApCWjEMIoXZ6DGtQHN8xDndwiO94F/tmpv6uf69o2.png"
+  ],
+  "metrics": {
+    "image_output_count": 5,
+    "model_variant": "layer-large",
+    "predict_time": 79.05524361,
+    "total_time": 79.068077169
+  },
+  "error": null
+}

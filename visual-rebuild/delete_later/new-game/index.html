@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Little Matcha Days</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  min-height: 100dvh;
+  font-family: Nunito, Georgia, sans-serif;
+  color: #5a3a22;
+  background: #1d2818 url("../layers/bg.png") center / cover no-repeat fixed;
+}
+.menu {
+  width: min(720px, calc(100vw - 24px));
+  margin: 4vh auto 3vh;
+  padding: 8px 22px 16px;
+  border: 42px solid transparent;
+  border-image: url("../layers/ui/panel.png") 160 fill;
+  border-image-repeat: stretch;
+  position: relative;
+}
+.plaque { position: relative; width: min(280px, 70%); margin: -58px auto 8px; }
+.title { display: block; width: 100%; }
+.title-text {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  font-size: 32px;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+.close {
+  position: absolute;
+  top: -28px;
+  right: -18px;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 0;
+  background: url("../layers/ui/close.png") center / contain no-repeat;
+  cursor: pointer;
+}
+.close:hover, .row:hover { filter: brightness(1.12); }
+.close:active, .row:active { filter: brightness(0.92); transform: translateY(1px); }
+.matcha { display: block; width: min(340px, 78%); margin: 0 auto 12px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 8px 18px 8px 16px;
+  border: 0;
+  background: url("../layers/ui/pill-cream.png") center / 100% 100% no-repeat;
+  color: #5a3a22;
+  font: 800 20px/1 Nunito, Georgia, sans-serif;
+  cursor: pointer;
+  text-align: left;
+}
+.row.primary { background-image: url("../layers/ui/pill-green.png"); color: #fff8e4; }
+.row img { width: 36px; height: 36px; object-fit: contain; flex: none; }
+.row span { flex: 1; }
+.wide { grid-column: 1 / -1; width: min(420px, 100%); justify-self: center; }
+.footer {
+  position: relative;
+  height: 78px;
+  margin: 14px 4px 0;
+  background: url("../layers/ui/footer.png") center / 100% 100% no-repeat;
+}
+.avatar {
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  width: 76px;
+  height: 76px;
+  transform: translateY(-50%);
+  object-fit: contain;
+}
+.slot {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 16px;
+}
+.slot.who { left: 11%; width: 22%; }
+.slot.day { left: 33%; width: 21%; }
+.slot.level { left: 54%; width: 21.4%; }
+.slot.coin { left: 75.4%; width: 22%; }
+.stats { display: none; }
+.slot img { width: 28px; height: 28px; object-fit: contain; flex: none; }
+.toast {
+  position: fixed; left: 50%; bottom: 16px; transform: translate(-50%, 10px);
+  opacity: 0; background: #2c331fe6; color: #fff4cf; border-radius: 999px;
+  padding: 10px 16px; font: 700 13px Nunito, sans-serif; pointer-events: none; transition: .2s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+@media (max-width: 680px) {
+  .menu { border-width: 22px; padding: 36px 12px 14px; margin: 20px auto 16px; }
+  .plaque { width: min(230px, 64%); margin: 8px auto 10px; }
+  .title-text { font-size: 26px; }
+  .grid { grid-template-columns: 1fr; }
+  .wide { width: 100%; }
+  .row {
+    min-height: 58px;
+    font-size: 18px;
+    border-style: solid;
+    border-width: 0 29px;
+    border-image: url("../layers/ui/pill-cream-round.png") 0 163 fill;
+    background: none;
+  }
+  .row.primary {
+    border-image-source: url("../layers/ui/pill-green.png");
+    border-image-slice: 0 293 fill;
+  }
+  .footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 0;
+    margin: 14px 2px 0;
+    padding: 6px 12px 6px 6px;
+    background: #f4ead4;
+    border: 2px solid #c4a56e;
+    border-radius: 999px;
+  }
+  .avatar {
+    position: static;
+    transform: none;
+    width: 34px;
+    height: 34px;
+  }
+  .slot { display: none; }
+  .stats {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    font-weight: 800;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .stats span + span::before { content: "·"; margin-right: 8px; color: #b08958; }
+  .stats img { width: 18px; height: 18px; margin-left: 4px; }
+  .close { width: 46px; height: 46px; top: 18px; right: 6px; }
+}
+</style>
+</head>
+<body>
+<main class="menu">
+  <div class="plaque">
+    <img class="title" src="../layers/ui/title.png" alt="">
+    <h1 class="title-text">Pause</h1>
+  </div>
+  <button class="close" type="button" data-action="close" aria-label="Close menu"></button>
+  <img class="matcha" src="../layers/ui/matcha.png" alt="">
+  <nav class="grid" aria-label="Game menu">
+    <button class="row primary" type="button" data-action="resume"><img src="../layers/ui/icon-play.png" alt=""><span>Resume Game</span></button>
+    <button class="row" type="button" data-action="inventory"><img src="../layers/ui/icon-bag.png" alt=""><span>Inventory</span></button>
+    <button class="row" type="button" data-action="upgrades"><img src="../layers/ui/icon-hammer.png" alt=""><span>Upgrades</span></button>
+    <button class="row" type="button" data-action="recipes"><img src="../layers/ui/icon-book.png" alt=""><span>Recipes</span></button>
+    <button class="row" type="button" data-action="leaderboard"><img src="../layers/ui/icon-trophy.png" alt=""><span>Leaderboard</span></button>
+    <button class="row" type="button" data-action="settings"><img src="../layers/ui/icon-gear.png" alt=""><span>Settings</span></button>
+    <button class="row wide" type="button" data-action="new"><img src="../layers/ui/icon-game.png" alt=""><span>New Game</span></button>
+  </nav>
+  <footer class="footer" aria-label="Player">
+    <img class="avatar" src="../layers/ui/player.png" alt="">
+    <div class="slot who"><span id="playerName">Player</span></div>
+    <div class="slot day"><img src="../layers/ui/icon-calendar.png" alt=""><span id="dayValue">Day 12</span></div>
+    <div class="slot level"><img src="../layers/ui/icon-level.png" alt=""><span id="levelValue">Level 5</span></div>
+    <div class="slot coin"><img src="../layers/ui/icon-coin.png" alt=""><span id="coinValue">2,430</span></div>
+    <div class="stats"><span>Player</span><span>Day 12</span><span>Level 5</span><img src="../layers/ui/icon-coin.png" alt=""><span>2,430</span></div>
+  </footer>
+</main>
+<div class="toast" id="toast" role="status"></div>
+<script>
+const toast = document.getElementById('toast');
+function notify(message) {
+  toast.textContent = message;
+  toast.classList.add('show');
+  clearTimeout(notify.timer);
+  notify.timer = setTimeout(() => toast.classList.remove('show'), 1400);
+}
+document.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', () => {
+  const action = button.dataset.action;
+  const label = button.getAttribute('aria-label') || button.textContent.trim();
+  if (action === 'resume') { location.href = 'counter.html'; return; }
+  if (action === 'close') notify('Continuing day 12');
+  else if (action === 'new') notify('A fresh tea-cart save is ready');
+  else notify(label + ' selected');
+}));
+</script>
+</body>
+</html>

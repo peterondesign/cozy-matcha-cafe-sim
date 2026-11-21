@@ -1,0 +1,26 @@
+{
+  "name": "add-ice",
+  "id": "4svfejpyqhrmw0d1zt2taq5r7m",
+  "status": "succeeded",
+  "model": "bytedance/seedream-5-pro",
+  "input": {
+    "prompt": "Create a precise 4 by 4 animation sprite sheet for a cozy matcha cafe game. Exactly sixteen equal sequential frames, ordered left to right then top to bottom. One continuous physical action from the untouched starting state to the settled final state. Fixed close-up camera above the same honey-wood counter. Same cream ceramic ware, same feminine barista hands in sage kimono sleeves, same soft morning light, same scale, same shadows, same warm hand-painted anime storybook style as the reference. Keep every object inside its cell. No cell borders, no text, no numbers, no labels, no UI. Flat uniform cream background. Show the ice bowl tilting over the centered tall glass so cubes fall in stages until the glass is filled to the correct line, then the bowl settles.",
+    "image_input": [
+      "https://api.replicate.com/v1/files/ODdmNjJkMjYtNTFlMC00YjM4LWEzNjUtYjliYjcwYjg5NmI0.webp"
+    ],
+    "layer_decomposition": false,
+    "size": "2K",
+    "aspect_ratio": "1:1",
+    "output_format": "png"
+  },
+  "output": [
+    "https://replicate.delivery/xezq/f4fEfKG5R2XpQJtffV2VwJX5CpeM2HNK5tkiijl8bKTte76xLA/tmpgownq9rm.png"
+  ],
+  "metrics": {
+    "image_output_count": 1,
+    "predict_time": 125.666018834,
+    "resolution_target": "2K",
+    "total_time": 125.682356542
+  },
+  "error": null
+}

@@ -1,0 +1,26 @@
+{
+  "bg-day": {
+    "id": "vvk731zw1nrmt0d1zsmbm5w1qc",
+    "status": "starting",
+    "get": "https://api.replicate.com/v1/predictions/vvk731zw1nrmt0d1zsmbm5w1qc",
+    "error": null
+  },
+  "bg-night": {
+    "id": "45vm7jrf35rmr0d1zsmr2a7b78",
+    "status": "starting",
+    "get": "https://api.replicate.com/v1/predictions/45vm7jrf35rmr0d1zsmr2a7b78",
+    "error": null
+  },
+  "footer-blank": {
+    "id": "n857cph3xsrmr0d1zsmrwve89g",
+    "status": "starting",
+    "get": "https://api.replicate.com/v1/predictions/n857cph3xsrmr0d1zsmrwve89g",
+    "error": null
+  },
+  "portrait": {
+    "id": "5tswf61rk5rmr0d1zsmreeva8r",
+    "status": "starting",
+    "get": "https://api.replicate.com/v1/predictions/5tswf61rk5rmr0d1zsmreeva8r",
+    "error": null
+  }
+}

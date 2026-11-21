@@ -1,0 +1,10 @@
+{
+  "prompt": "Decompose this game screen into the maximum useful editable layers. Separate the complete empty environment plate, foreground counter, roof and timber frame, green noren curtain, paper lantern, cherry blossom branches, open sign, customer character, speech bubble, speech text, drink-order illustration, matcha tin, bamboo whisk, sieve, empty chawan, empty tall glass, kettle, ice bowl, milk bottle, oat milk bottle, steam, loose petals, and shadows. Preserve every pixel of the original composition. Return clean transparent PNG layers with accurate bounds and stacking order.",
+  "image_input": [
+    "https://replicate.delivery/pbxt/QBrVb4unqh78kK4zhQBkLCEbjLsUVJgQ5WDCUy4VffNCb2Fw/first-game-screen.webp"
+  ],
+  "layer_decomposition": true,
+  "size": "2K",
+  "aspect_ratio": "match_input_image",
+  "output_format": "png"
+}

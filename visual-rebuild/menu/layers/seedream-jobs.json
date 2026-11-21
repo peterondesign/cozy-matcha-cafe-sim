@@ -1,0 +1,20 @@
+{
+  "panel": {
+    "id": "kgdtxc4d05rmy0d1zt492tpkmw",
+    "status": "starting",
+    "get": "https://api.replicate.com/v1/predictions/kgdtxc4d05rmy0d1zt492tpkmw",
+    "error": null
+  },
+  "buttons": {
+    "id": "6cvdf35gp1rmy0d1zt495bn2m8",
+    "status": "starting",
+    "get": "https://api.replicate.com/v1/predictions/6cvdf35gp1rmy0d1zt495bn2m8",
+    "error": null
+  },
+  "footer": {
+    "id": "mjyg4xytm9rmy0d1zt48bhk2z8",
+    "status": "starting",
+    "get": "https://api.replicate.com/v1/predictions/mjyg4xytm9rmy0d1zt48bhk2z8",
+    "error": null
+  }
+}
