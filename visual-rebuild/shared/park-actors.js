@@ -1,6 +1,6 @@
-window.matchaPark.createActorStage = function createActorStage(THREE, modelFor) {
+window.matchaPark.createActorStage = function createActorStage(THREE, modelFor, width=320, height=384) {
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-  renderer.setSize(320,384);
+  renderer.setSize(width,height);
   renderer.toneMapping=THREE.NoToneMapping;
   renderer.toneMappingExposure=1.03;
   const scene = new THREE.Scene();
@@ -228,7 +228,7 @@ window.matchaPark.createActorStage = function createActorStage(THREE, modelFor) 
     const {model,mode,stride,facing,sprite}=actor;
     const {root,mixer,actions}=model;
     if (mixer) {
-      const name={sit:'Sit',rest:'Meditate',kick:'Kick',wave:'Idle',tpose:'T-Pose'}[mode]
+      const name={sit:'Sit',rest:'Meditate',kick:'Kick',wave:model.skin?'Idle':'Wave',tpose:'T-Pose'}[mode]
         ?? (stride>.13?(model.apron?'ApronWalk':'Walk'):'Idle');
       const action=actions[name];
       if (model.current!==action) {
@@ -256,7 +256,7 @@ window.matchaPark.createActorStage = function createActorStage(THREE, modelFor) 
     const wave=remaining>0?Math.min(1,(1.85-remaining)*5,remaining*4):0;
     model.skin?.update(breath,wave,time,mode);
     if (poseOnly) return;
-    if (renderer.domElement.width!==320) renderer.setSize(320,384,false);
+    if (renderer.domElement.width!==width) renderer.setSize(width,height,false);
     const display=model.skin?.display ?? root;
     scene.add(display);
     renderer.render(scene,camera);

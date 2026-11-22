@@ -12,7 +12,7 @@ const benches=[
 ];
 const yogaMat={x:1040,y:640,yaw:0.12,w:196,h:92};
 const gardenShortcut=document.createElement('a');gardenShortcut.href='../garden/';gardenShortcut.textContent='Garden';gardenShortcut.style.cssText='background:#dce9b4;color:#49351f;border:3px double #9e7b48;border-radius:13px;padding:8px;text-decoration:none;font:bold 15px Georgia';document.querySelector('header')?.append(gardenShortcut);
-let blend=0,blendTarget=0,x=824,y=859,direction=0,flip=false,stride=0,last=0,faceX=0,faceY=1,testAction='normal',actionAt=0,seated=false,walkVel=0,benchYaw=0,matYaw=yogaMat.yaw;
+let blend=0,blendTarget=0,x=824,y=859,last=0,faceX=0,faceY=1,testAction='normal',actionAt=0,seated=false,walkVel=0,benchYaw=0,matYaw=yogaMat.yaw;
 const hintEl=document.querySelector('#hint');
 let clickGoal=null,nearSpot=null,view={cx:0,cy:0,zoom:1},faceYaw=0;
 function seatedNow(){return testAction==='sit-bench'||testAction==='sit-mat'||testAction==='stretch-mat'}
@@ -157,10 +157,10 @@ function tick(now){
   const mx=dx*dt*speed/(len||1),my=dy*dt*speed*.82/(len||1);
   if(allowed(x+mx,y))x+=mx;
   if(allowed(x,y+my))y+=my;
-  direction=Math.abs(dx)>Math.abs(dy)?1:dy<0?2:0;flip=direction===1&&dx<0;faceX=dx;faceY=dy;
+  faceX=dx;faceY=dy;
   if(clickGoal&&Math.hypot(clickGoal.x-x,clickGoal.y-y)<14)clickGoal=null;
  }
- const travel=Math.hypot(x-beforeX,y-beforeY);stride+=travel/12;
+ const travel=Math.hypot(x-beforeX,y-beforeY);
  if(clickGoal)status.textContent='Walking there';
  else status.textContent=len&&!travel&&!sitting?'Cannot walk there':stairs?'Stone steps':'';
  const nearFriend=visitors.find(person=>Math.hypot(person.x-x,person.y-y)<86);
@@ -185,14 +185,8 @@ function tick(now){
  ctx.fillStyle=onMatNow?'#2a24184a':'#322e2828';
  ctx.beginPath();ctx.ellipse(x,y+(onMatNow?6:2),onMatNow?16:9,onMatNow?6:3.2,0,0,7);ctx.fill();
  for(const person of visitors){
-  const tone=person.file==='hiker'?'#3d8a86':person.file==='grocer'?'#8a6bb0':'#d4895a';
-  ctx.fillStyle=tone+'cc';
+  ctx.fillStyle='#322e2828';
   ctx.beginPath();ctx.ellipse(person.x,person.y+2,11,3.6,0,0,7);ctx.fill();
-  ctx.fillStyle=tone;
-  ctx.beginPath();ctx.ellipse(person.x,person.y-38,9,11,0,0,7);ctx.fill();
-  ctx.beginPath();ctx.ellipse(person.x,person.y-18,12,16,0,0,7);ctx.fill();
-  ctx.fillStyle='#f3d2b8';
-  ctx.beginPath();ctx.ellipse(person.x,person.y-52,7,8,0,0,7);ctx.fill();
   if(Math.hypot(person.x-x,person.y-y)>54){
    ctx.fillStyle='#fff6dccc';ctx.strokeStyle='#5a3d1ecc';ctx.lineWidth=2;
    ctx.font='700 13px Georgia,serif';ctx.textAlign='center';
@@ -255,76 +249,38 @@ if(T){
  scene.add(hemi);
  const sun=new T.DirectionalLight(0xfff7ea,1.8);sun.position.set(-40,80,60);scene.add(sun);
  const camera=new T.OrthographicCamera(0,1,1,0,-800,800);
- const people=[];
- const loader=new T.GLTFLoader();
- const motions=['walk','walk-femme','walk-hiker','walk-dog','sit-bench','sit-mat','stretch-mat','wave'];
- const library={};
- for(const name of motions)loader.load('characters/test/motion/'+name+'.glb',motion=>{if(motion.animations[0])library[name]=motion.animations[0]});
- function spawnActor(who,root){
-  const box=new T.Box3().setFromObject(root),size=box.getSize(new T.Vector3());
-  const holder=new T.Group();
-  const fit=110/size.y;
-  root.scale.setScalar(fit);
-  root.position.set(-(box.min.x+size.x/2)*fit,-box.min.y*fit,-(box.min.z+size.z/2)*fit);
-  root.traverse(node=>{
-   if(node.isBone)node.userData.rest=node.quaternion.clone();
-   if(!node.isMesh)return;
-   const src=Array.isArray(node.material)?node.material[0]:node.material;
-   const map=src&&src.map;
-   if(map){
-    if(map.colorSpace!=null)map.colorSpace=T.SRGBColorSpace||map.colorSpace;
-    map.generateMipmaps=false;
-    map.needsUpdate=true;
-   }
-   node.material=new T.MeshBasicMaterial({
-    map,
-    color:0xffffff,
-    side:T.DoubleSide,
-    depthTest:false,
-    depthWrite:false
-   });
-   node.frustumCulled=false;
-  });
-  const group=new T.Group();
-  group.visible=true;
-  group.frustumCulled=false;
-  holder.rotation.y=0;
-  group.add(holder);holder.add(root);scene.add(group);
-  const actor={group,holder,who,rig:null,playing:'',walkName:who.walk||(who.file==='hiker'?'walk-hiker':'walk-femme')};
-  if(root.getObjectByName('mixamorigHips')){
-   actor.mixer=new T.AnimationMixer(root);
-   actor.hips=root.getObjectByName('mixamorigHips');
-   actor.hips.userData.restPos=actor.hips.position.clone();
-  }
+ if(!window.matchaPark?.createActorStage)throw new Error('The park character renderer could not load.');
+ const spriteWidth=512,spriteHeight=614;
+ const stage=window.matchaPark.createActorStage(T,null,spriteWidth,spriteHeight),people=[];
+ const spriteGeometry=new T.PlaneGeometry(1,1);
+ const visitorPaints=[
+  ['#78848b','#524c53','#ce9c77','#39312f'],
+  ['#77845f','#8a6951','#b77b52','#4c3025'],
+  ['#a87b9f','#574865','#a56e52','#392925'],
+  ['#c17e69','#52636a','#e0b48d','#49352d'],
+  ['#8295a1','#77674f','#d4a177','#43312a'],
+  ['#a47b5e','#6c7552','#bc8c6a','#382c28'],
+  ['#c09a58','#566875','#c9906b','#45342a']
+ ];
+ function spawnActor(who,colors,offset,outfit=null){
+  const [shirt,pants,skin,hair]=colors;
+  const model=stage.humanoid(shirt,pants,skin,hair,outfit);
+  const canvas=document.createElement('canvas');
+  canvas.width=spriteWidth;canvas.height=spriteHeight;
+  const texture=new T.CanvasTexture(canvas);
+  texture.colorSpace=T.SRGBColorSpace||texture.colorSpace;
+  const plane=new T.Mesh(spriteGeometry,new T.MeshBasicMaterial({
+   map:texture,transparent:true,depthTest:false,depthWrite:false
+  }));
+  plane.frustumCulled=false;
+  scene.add(plane);
+  const actor={who,model,texture,plane,animation:{model,mode:'normal',stride:0,facing:0,
+   sprite:canvas.getContext('2d'),offset}};
   people.push(actor);
   return actor;
  }
- function playClip(person,mode,clipName,reverse,rate){
-  const clip=library[clipName]||library[person.walkName]||library.walk;
-  if(!clip||!person.mixer)return;
-  person.playing=mode;
-  person.mixer.stopAllAction();
-  const loop=mode==='walk'||mode==='walk-femme'||mode==='walk-hiker'||mode==='walk-dog'||mode==='stretch-mat';
-  const act=person.mixer.clipAction(clip);
-  act.enabled=true;
-  act.setLoop(loop?2201:T.LoopOnce,loop?Infinity:1);
-  act.clampWhenFinished=!loop;
-  act.reset();
-  const walk=mode==='walk'||mode==='walk-femme'||mode==='walk-hiker'||mode==='walk-dog';
-  act.timeScale=reverse?-1:walk?(rate||0.88):1;
-  act.paused=false;
-  act.weight=1;
-  act.play();
-  if(reverse)act.time=clip.duration;
-  if(mode==='stand'){act.paused=true;act.time=Math.min(.32,clip.duration*.16);act.weight=1}
-  person.act=act;
- }
- const cast=[{file:'barista',player:true,walk:'walk-femme'},...visitors];
- cast.forEach((who,index)=>{
-  loader.load('characters/test/'+who.file+'-uthana.glb?npc='+index,gltf=>spawnActor(who,gltf.scene));
- });
- const footV=new T.Vector3();
- const footBones=['mixamorigLeftToeBase','mixamorigRightToeBase','mixamorigLeftFoot','mixamorigRightFoot'];
+ spawnActor({player:true},['#f6e5bf','#60634a','#d8a477','#493027'],0,'apron');
+ visitors.forEach((who,index)=>spawnActor(who,visitorPaints[index],index+1));
  let motionClock=performance.now();
  drawFigures=({cx,cy,cw,ch,w,h,dpr,blend:dim,travel,walkVel:vel})=>{
  try{
@@ -338,51 +294,28 @@ if(T){
    const moving=person.who.player?travel>0.35:!!person.who.moving&&!visitorBusy;
    const px=person.who.player?x:person.who.x,py=person.who.player?y:person.who.y;
    const hNow=person.who.player?playerH:82+42*py/1152;
-   person.group.position.set(px,1152-py,0);
-   person.group.scale.setScalar(hNow/88);
-   person.group.renderOrder=py;
-   person.group.traverse(node=>{if(node.isMesh)node.renderOrder=py});
    const fx=person.who.player?faceX:person.who.vx,fy=person.who.player?faceY:person.who.vy;
-   const sx=Math.abs(fx||0),sy=Math.abs(fy||0);
-   const seatedPose=person.who.player&&(testAction==='sit-bench'||testAction==='up-bench'||testAction==='sit-mat'||testAction==='up-mat'||testAction==='stretch-mat');
-   if(sx+sy>0.02&&!seatedPose)person.holder.rotation.set(0,yawFrom(fx,fy),0);
-   if(person.mixer){
-    const mine=person.who.player?testAction:(visitorBusy?'wave':'normal');
-    const onBench=person.who.player&&(mine==='sit-bench'||mine==='up-bench');
-    const onMat=person.who.player&&(mine==='sit-mat'||mine==='up-mat'||mine==='stretch-mat');
-    if(onBench&&person.playing!==mine){
-     const best=nearestBench();
-     x=best.sitX;y=best.sitY;benchYaw=best.yaw;
-    }
-    if(onMat&&person.playing!==mine){x=yogaMat.x;y=yogaMat.y+10;matYaw=yogaMat.yaw}
-    if(person.who.player)person.group.position.set(x,1152-y,0);
-    if(onBench)person.holder.rotation.set(0,benchYaw,0);
-    if(onMat)person.holder.rotation.set(0,matYaw,0);
-    const idleWalk=person.walkName==='walk-hiker'?(library['walk-hiker']?'walk-hiker':'walk'):(person.walkName||'walk-femme');
-    const mode=mine==='normal'?(moving?idleWalk:'stand'):mine;
-    const clipName=mode==='stand'?idleWalk:mode==='up-bench'?'sit-bench':mode==='up-mat'?'sit-mat':mode;
-    const rate=0.7+0.45*Math.min(1,(vel||0)/148);
-    if(person.playing!==mode)playClip(person,mode,clipName,mine.startsWith('up-'),rate);
-    else if(person.act&&(mode==='walk'||mode==='walk-femme'||mode==='walk-hiker')&&person.who.player)person.act.timeScale=rate;
-    person.mixer.update(motionDt);
-    person.group.visible=true;
-    if(person.hips&&person.hips.userData.restPos){
-     person.hips.position.x=person.hips.userData.restPos.x;
-     person.hips.position.z=person.hips.userData.restPos.z;
-    }
-    person.group.updateWorldMatrix(true,true);
-    let low=Infinity;
-    for(const name of footBones){
-     const bone=person.group.getObjectByName(name);
-     if(!bone)continue;
-     bone.getWorldPosition(footV);
-     if(footV.y<low)low=footV.y;
-    }
-    const anchorY=person.who.player?y:py;
-    if(low<Infinity&&Math.abs(1152-anchorY-low)<80)person.group.position.y+=1152-anchorY-low+(onMat?8:onBench?4:0);
-    if(!Number.isFinite(person.group.position.x))person.group.position.x=px;
-    if(!Number.isFinite(person.group.position.y))person.group.position.y=1152-py;
+   const pose=person.who.player?testAction:(visitorBusy?'wave':'normal');
+   const seatedPose=pose==='sit-bench'||pose==='sit-mat'||pose==='up-bench'||pose==='up-mat';
+   if(person.who.player&&seatedPose&&person.animation.mode==='normal'){
+    const best=nearestBench();
+    if(pose==='sit-bench'||pose==='up-bench'){x=best.sitX;y=best.sitY;benchYaw=best.yaw}
+    else{x=yogaMat.x;y=yogaMat.y+10;matYaw=yogaMat.yaw}
    }
+   const anchorX=person.who.player?x:px,anchorY=person.who.player?y:py;
+   let mode=pose==='sit-bench'||pose==='sit-mat'||pose==='up-bench'||pose==='up-mat'?'sit':
+    pose==='stretch-mat'?'rest':pose==='wave'?'wave':'normal';
+   if(!person.who.player&&visitorBusy)mode='wave';
+   if(person.who.player&&pose==='wave')person.animation.waveUntil=(person.who.waveUntil||0)/1000;
+   if(fx*fx+fy*fy>.0004&&!seatedPose)person.animation.facing=yawFrom(fx,fy);
+   person.animation.mode=mode;
+   person.animation.stride=moving?Math.min(1,(person.who.player?vel:20)/148):0;
+   stage.draw(person.animation,now/1000,motionDt);
+   person.texture.needsUpdate=true;
+   const figureHeight=hNow*1.62;
+   person.plane.position.set(anchorX,1152-anchorY+figureHeight*.31,0);
+   person.plane.scale.set(figureHeight*spriteWidth/spriteHeight,figureHeight,1);
+   person.plane.renderOrder=anchorY;
   }
   hemi.intensity=2.1-dim*0.7;
   sun.intensity=1.8-dim*0.6;

@@ -35,33 +35,17 @@ HUD art is resolved from the script URL of `world-hud.js`, so counter icons stay
 
 ## Runtime layers
 
-The park is two stacked canvases:
+The park is three stacked canvases:
 
 1. `#park` — 2D. Paints `world-day.jpg` / `world-night.jpg` into a 2048×1152 camera, plus the yoga-mat sprite, contact shadows, and the barista star.
 2. `#figures` — WebGL (Three r170 in `market/three-r170.js`). Orthographic camera, world X = park x, world Y = `1152 - park y`. Pointer-events none.
+3. `#canopy` — 2D foreground tree overlays, drawn in front of the actors.
 
-`park.js` owns movement, spots, visitors, and the mixer. The barista is the animation source of truth: one clip library, one facing rule, one foot plant. Guests clone the same Mixamo clips.
+`park.js` owns movement, spots, visitors, and the mixer. All residents use the shared procedural 3D actor stage in `../../shared/park-actors.js`; palettes distinguish visitors without separate scanned meshes. The stage supplies the same walk, idle, sit, meditate, and wave clips for every character.
 
 ## Characters and motion
 
-Rigs (Mixamo `mixamorigHips`, no colon in Three’s sanitized names):
-
-- `characters/test/barista-uthana.glb` — player
-- `walker-uthana.glb`, `hiker-uthana.glb`, `grocer-uthana.glb` — cafe guests (Hana / Ren / Yuki bodies, reused for the crowd)
-
-Clips in `characters/test/motion/`:
-
-| File | Used for |
-|---|---|
-| `walk-femme.glb` | barista and feminine walks |
-| `walk.glb` | hiker / masculine walk |
-| `walk-dog.glb` | leash walk |
-| `sit-bench.glb` | sit; get-up is this clip reversed |
-| `sit-mat.glb` | sit on yoga mat; get-up reversed |
-| `stretch-mat.glb` | stretches |
-| `wave.glb` | stop and wave (one-hand clip) |
-
-Idle never uses the bind T-pose. Stand is a paused frame of the walk clip.
+The park uses the shared low-poly rig and local animation clips; it does not load scanned GLBs or Mixamo animation files. Idle never uses a bind T-pose, and the shared walk cycle is used by the player and visitors.
 
 ## Spots and actions
 
