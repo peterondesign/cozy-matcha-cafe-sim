@@ -1,0 +1,47 @@
+[
+  {
+    "id": "lawn-tree",
+    "x": 998,
+    "y": 348,
+    "w": 168,
+    "h": 172,
+    "sortY": 510,
+    "file": "overlays/lawn-tree.png"
+  },
+  {
+    "id": "south-tree",
+    "x": 740,
+    "y": 920,
+    "w": 280,
+    "h": 232,
+    "sortY": 1148,
+    "file": "overlays/south-tree.png"
+  },
+  {
+    "id": "nw-cherry",
+    "x": 0,
+    "y": 0,
+    "w": 400,
+    "h": 320,
+    "sortY": 230,
+    "file": "overlays/nw-cherry.png"
+  },
+  {
+    "id": "east-cherry",
+    "x": 1590,
+    "y": 80,
+    "w": 200,
+    "h": 220,
+    "sortY": 268,
+    "file": "overlays/east-cherry.png"
+  },
+  {
+    "id": "garden-cherry",
+    "x": 10,
+    "y": 255,
+    "w": 240,
+    "h": 240,
+    "sortY": 440,
+    "file": "overlays/garden-cherry.png"
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "barista": {
+    "id": "bj2mpj4km1rmw0d20f0sed9bhg",
+    "get": "https://api.replicate.com/v1/predictions/bj2mpj4km1rmw0d20f0sed9bhg",
+    "status": "starting"
+  },
+  "walker": {
+    "id": "nfzxkwd8a1rmt0d20f0sxebp28",
+    "get": "https://api.replicate.com/v1/predictions/nfzxkwd8a1rmt0d20f0sxebp28",
+    "status": "starting"
+  },
+  "hiker": {
+    "id": "t413kb5x21rmy0d20f0sq250tw",
+    "get": "https://api.replicate.com/v1/predictions/t413kb5x21rmy0d20f0sq250tw",
+    "status": "starting"
+  },
+  "grocer": {
+    "id": "66meae6je5rmw0d20f0sw0hs2c",
+    "get": "https://api.replicate.com/v1/predictions/66meae6je5rmw0d20f0sw0hs2c",
+    "status": "starting"
+  }
+}

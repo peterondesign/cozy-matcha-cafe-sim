@@ -119,6 +119,23 @@ body {
 .confirm-card button { min-height: 52px; border: 0; border-radius: 14px; background: #7d9a45; color: #fffaf0; font: 700 16px/1.2 system-ui, sans-serif; cursor: pointer; }
 .confirm-card #confirmNo { background: #8d6a45; }
 .settings { display: grid; grid-template-columns: 180px 1fr; gap: 14px; margin-top: 8px; }
+  #shelf { grid-template-columns: 1fr; }
+  #shelf p { margin: 8px 0 16px; font: 800 18px/1.4 Nunito, sans-serif; }
+  #shelfBody { max-height: 48vh; overflow: auto; padding-right: 4px; }
+  .stock-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stock-card {
+    display: grid; grid-template-columns: 42px 1fr; gap: 8px; align-items: center;
+    padding: 6px; border-radius: 14px; background: #fff8eacc;
+  }
+  .stock-card img { width: 42px; height: 42px; object-fit: contain; }
+  .stock-card b { display: block; font: 800 13px/1.2 system-ui, sans-serif; }
+  .stock-card small { color: #7d684c; font: 700 12px/1.2 system-ui, sans-serif; }
+  .meter { height: 12px; margin-top: 4px; border-radius: 99px; background: #efe6d4; overflow: hidden; box-shadow: inset 0 1px 2px #00000018; }
+  .meter span { display: block; height: 100%; background: linear-gradient(#c5e07a, #6f853a); }
+  .meter.low span { background: linear-gradient(#f0a3a0, #d4544a); }
+  .restock { display: block; width: min(168px, 46%); margin: 8px auto 0; border: 0; background: transparent; cursor: pointer; }
+.restock[hidden] { display: none !important; }
+  .restock img { width: 100%; height: auto; display: block; }
 [hidden] { display: none !important; }
 .cats { display: flex; flex-direction: column; gap: 10px; }
 .audio-block { margin: 0 0 16px; padding-bottom: 12px; border-bottom: 1px solid #e4d3b4; }
@@ -227,6 +244,7 @@ input[type="range"]::-webkit-slider-thumb {
   <img class="matcha" id="matcha" src="layers/ui/matcha.png" alt="">
   <nav class="grid" id="mainMenu" aria-label="Game menu">
     <button class="row primary" type="button" data-action="resume"><img src="layers/ui/icon-play.png" alt=""><span>Resume Game</span></button>
+    <button class="row" type="button" data-action="park"><img src="layers/ui/icon-game.png" alt=""><span>Park</span></button>
     <button class="row" type="button" data-action="inventory"><img src="layers/ui/icon-bag.png" alt=""><span>Inventory</span></button>
     <button class="row" type="button" data-action="upgrades"><img src="layers/ui/icon-hammer.png" alt=""><span>Upgrades</span></button>
     <button class="row" type="button" data-action="recipes"><img src="layers/ui/icon-book.png" alt=""><span>Recipes</span></button>
@@ -234,6 +252,11 @@ input[type="range"]::-webkit-slider-thumb {
     <button class="row" type="button" data-action="settings"><img src="layers/ui/icon-gear.png" alt=""><span>Settings</span></button>
     <button class="row wide" type="button" data-action="new"><img src="layers/ui/icon-game.png" alt=""><span>New Game</span></button>
   </nav>
+  <section class="settings" id="shelf" hidden>
+    <p id="shelfText"></p>
+    <div id="shelfBody"></div>
+    <button class="row primary" type="button" id="shelfBack">Back</button>
+  </section>
   <section class="settings" id="settings" hidden>
     <div class="cats">
       <button class="row primary" type="button" data-cat="audio"><img src="layers/ui/icon-gear.png" alt=""><span>Audio</span></button>
@@ -267,11 +290,11 @@ input[type="range"]::-webkit-slider-thumb {
   </section>
   <footer class="footer" aria-label="Player">
     <img class="avatar" src="layers/ui/player.png" alt="">
-    <div class="slot who"><span id="playerName">Player</span></div>
-    <div class="slot day"><img src="layers/ui/icon-calendar.png" alt=""><span id="dayValue">Day 12</span></div>
-    <div class="slot level"><img src="layers/ui/icon-level.png" alt=""><span id="levelValue">Level 5</span></div>
-    <div class="slot coin"><img src="layers/ui/icon-coin.png" alt=""><span id="coinValue">2,430</span></div>
-    <div class="stats"><span>Player</span><span>Day 12</span><span>Level 5</span><img src="layers/ui/icon-coin.png" alt=""><span>2,430</span></div>
+    <div class="slot who"><span id="playerName"></span></div>
+    <div class="slot day"><img src="layers/ui/icon-calendar.png" alt=""><span id="dayValue"></span></div>
+    <div class="slot level"><img src="layers/ui/icon-level.png" alt=""><span id="levelValue"></span></div>
+    <div class="slot coin"><img src="layers/ui/icon-coin.png" alt=""><span id="coinValue"></span></div>
+    <div class="stats"><span></span><span></span><span></span><img src="layers/ui/icon-coin.png" alt=""><span></span></div>
   </footer>
 </main>
 <div class="toast" id="toast" role="status"></div>
@@ -286,6 +309,7 @@ input[type="range"]::-webkit-slider-thumb {
   </div>
 </div>
 <script src="../shared/audio-bus.js"></script>
-<script src="menu.js?v=9"></script>
+<script src="../shared/pantry.js"></script>
+<script src="menu.js?v=18"></script>
 </body>
 </html>

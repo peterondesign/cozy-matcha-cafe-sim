@@ -1,0 +1,6 @@
+body .top-hud{display:grid;grid-template-columns:repeat(4,max-content);align-items:center;gap:4px;max-width:100vw}
+body .top-hud .pill{display:flex;position:static;align-items:center;gap:4px;height:auto;padding:5px 8px;background:#fff0cf;color:#503821;border:2px double #ae8b56;border-radius:14px}
+body .top-hud .pill img{display:none}body .top-hud .pill b{position:static;display:block;font:700 clamp(11px,1.4vw,15px) Georgia}
+body .top-hud .pill::before{font:600 11px system-ui;color:#655033}.pill.coin::before{content:'Coins'}.pill.smile::before{content:'Mood'}.pill.day::before{content:'Day'}.pill.time::before{content:'Time'}
+body .tools button,body .tools a{width:auto;height:auto;padding:8px 10px;color:#503821;background:#fff0cf;border:3px double #a78252;border-radius:10px;font:600 14px Georgia;text-decoration:none}
+@media(max-width:400px){body .top-hud .pill{padding:4px 6px}}

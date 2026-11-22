@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Village Grocer</title><link rel="stylesheet" href="world.css"><link rel="stylesheet" href="shelf-access.css"></head>
+<body>
+<div class="mast"><h1>Village Grocer</h1><matcha-hud></matcha-hud><nav aria-label="World"><a href="./">Park</a><a href="../../counter/">Counter</a><a href="../../menu/">Menu</a></nav></div>
+<script src="../world-hud.js"></script>
+<main>
+<section id="scene" aria-label="Shop floor">
+<div id="painting"><img id="art" src="grocer.webp" width="2048" height="1152" alt="Wooden shelves line the garden aisle. The shopkeeper waits at the counter."><img id="artNight" src="grocer-night.webp" alt=""><div id="targets"></div></div>
+<video id="gesture" muted playsinline hidden aria-hidden="true"></video>
+<button id="light">Night</button>
+<nav id="walk" aria-label="Move through the shop"><button id="prev" aria-label="Previous stop">‹</button><span id="location"></span><button id="next" aria-label="Next stop">›</button></nav>
+</section>
+<aside aria-label="Shopping counter">
+<div class="paper"><div class="heading"><small id="eyebrow"></small><button id="home">Entrance</button></div>
+<h2 id="title"></h2><div id="content"></div></div>
+<div class="bottom"><output id="notice" role="status"></output><button id="basket"><img src="../../menu/layers/ui/icon-bag.png" alt=""><span>View basket</span><b id="sum"></b></button></div>
+</aside>
+</main>
+<script src="market/order-list.js"></script><script src="../../shared/pantry.js"></script><script src="../../shared/audio-bus.js"></script><script src="shelf-access.js"></script></body></html>
