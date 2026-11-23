@@ -5,25 +5,19 @@
 <title>Rigging Test</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#263329;color:#432e1e;font:600 16px Georgia,serif}
-canvas{display:block;width:100vw;height:100dvh}
-header{position:fixed;top:14px;left:12px;display:flex;gap:6px;z-index:2}
-header a,button{background:#fff0cf;color:#49351f;border:3px double #9e7b48;border-radius:13px;padding:8px;text-decoration:none;font:bold 15px Georgia;cursor:pointer}
-button.active{background:#93a96c}
-#panel{position:fixed;top:14px;right:14px;z-index:3;display:grid;gap:8px;width:min(280px,46vw)}
-#panel section{display:flex;flex-wrap:wrap;gap:6px}
-#readout{position:fixed;left:14px;bottom:16px;z-index:3;max-width:min(560px,70vw);background:#fff6e4;border:3px double #89683c;border-radius:16px;padding:10px 12px;font:600 14px Georgia,serif;white-space:pre-wrap}
+body{margin:0;background:#263329;overflow:hidden;font:600 16px Georgia,serif}
+#stage{position:fixed;inset:0;overflow:hidden}
+#walk-right{position:absolute;width:min(45vw,448px);height:auto;left:50%;top:50%;transform:translate(-50%,-50%);user-select:none;pointer-events:none}
+#controls{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));z-index:2;display:flex;gap:8px;transform:translateX(-50%)}
+#controls button{min-width:44px;height:44px;border:3px double #9e7b48;border-radius:13px;background:#fff0cf;color:#49351f;font:700 18px Georgia;cursor:pointer;touch-action:none}
 </style>
-<header>
-  <a href="../menu/">Menu</a>
-  <a href="../park/">Park</a>
-</header>
-<canvas id="stage" aria-label="Rigging test stage"></canvas>
-<div id="panel">
-  <section id="bodies" aria-label="Bodies"></section>
-  <section id="clips" aria-label="Clips"></section>
+<main id="stage" aria-label="Walk right GIF test">
+  <img id="walk-right" src="walk_right.gif" alt="Character walking right">
+</main>
+<div id="controls" aria-label="Walk test controls">
+  <button id="left" type="button" aria-label="Move left">◀</button>
+  <button id="reset" type="button" aria-label="Reset position">↺</button>
+  <button id="right" type="button" aria-label="Move right">▶</button>
 </div>
-<p id="readout">Loading rigs…</p>
-<script src="../park/market/three-r170.js"></script>
 <script type="module" src="rig.js"></script>
 </html>

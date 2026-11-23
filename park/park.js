@@ -6,7 +6,7 @@ const figureCanvas=document.querySelector('#figures');
 const canopy=document.querySelector('#canopy'), canopyCtx=canopy?canopy.getContext('2d'):null;
 const status=document.querySelector('output');
 async function load(file){const img=new Image();img.src=file;await img.decode();return img}
-const [day,night,matArt,starArt]=await Promise.all(['world-day.jpg','world-night.jpg','yoga-mat.png','player-star.png'].map(load)).catch(error=>{status.textContent='Park artwork could not load. Refresh to retry.';throw error});
+const [day,night,matArt]=await Promise.all(['world-day.jpg','world-night.jpg','yoga-mat.png'].map(load)).catch(error=>{status.textContent='Park artwork could not load. Refresh to retry.';throw error});
 const overlayData=await fetch('overlays/manifest.json').then(r=>r.json()).catch(()=>[]);
 for(const spec of overlayData)spec.img=await load(spec.file);
 const benches=[
@@ -62,10 +62,6 @@ function nearestBench(){
 const keys=new Set(), touches=new Map();
 const mapping={w:'up',a:'left',s:'down',d:'right',ArrowUp:'up',ArrowLeft:'left',ArrowDown:'down',ArrowRight:'right'};
 onkeydown=e=>{
- if(e.key.toLowerCase()==='c'){
-  if(!e.repeat)callDog(player);
-  return;
- }
  if(e.key.toLowerCase()==='e'){
   e.preventDefault();
   if(!e.repeat&&nearSpot)nearSpot.go();
@@ -79,7 +75,6 @@ for(const b of document.querySelectorAll('[data-key]')){
  b.onpointerdown=e=>{b.setPointerCapture(e.pointerId);touches.set(e.pointerId,b.dataset.key)};
  b.onlostpointercapture=e=>touches.delete(e.pointerId);
 }
-document.querySelector('#call-dog').addEventListener('click',()=>callDog(player));
 function allowed(a,b){
  return isWalkableCell(a,b);
 }
@@ -331,8 +326,6 @@ function tick(now){
   hintEl.style.left=(nearSpot.x-cx)*zoom+'px';
   hintEl.style.top=(nearSpot.y-cy)*zoom+'px';
  }
- const starY=y-(106+36*y/1152)-28;
- ctx.drawImage(starArt,x-12,starY,24,24);
  drawFigures({cx,cy,cw,ch,w,h,dpr,zoom,blend,travel,walkVel,now,dt});
  if(canopy&&canopyCtx){
   if(canopy.width!==canvas.width||canopy.height!==canvas.height){canopy.width=canvas.width;canopy.height=canvas.height}
@@ -348,15 +341,7 @@ function tick(now){
  }
  requestAnimationFrame(tick)
 }
-const visitors=[
- {customer:'02',guest:'Hana',purpose:'action',x:760,y:900,vx:0,vy:0},
- {customer:'04',guest:'Ren',purpose:'transit',x:1080,y:980,vx:0,vy:0},
- {customer:'05',guest:'Yuki',purpose:'transit',x:900,y:700,vx:0,vy:0},
- {customer:'03',guest:'Mio',purpose:'transit',x:780,y:760,vx:0,vy:0},
- {customer:'07',guest:'Ken',purpose:'transit',x:1180,y:900,vx:0,vy:0},
- {customer:'08',guest:'Jun',purpose:'action',x:920,y:820,vx:0,vy:0},
- {customer:'01',guest:'Sota',purpose:'transit',x:860,y:560,vx:0,vy:0}
-];
+const visitors=[];
 
 const actionKinds=['SIT_BENCH','SIT_MAT','WAVE','WALK_DOG'];
 const actionCells={SIT_BENCH:['bench-west','bench-north','bench-east'],SIT_MAT:['mat'],WAVE:['wave-point'],WALK_DOG:['wave-point']};
@@ -640,8 +625,6 @@ try{
   };
   actors.push(actor);
  }
- addActor(player);
- visitors.forEach(addActor);
  let rendererDpr=0,rendererWidth=0,rendererHeight=0;
  drawFigures=({cx,cy,cw,ch,w,h,dpr,blend:dim,travel,dt})=>{
   if(rendererDpr!==dpr||rendererWidth!==w||rendererHeight!==h){
