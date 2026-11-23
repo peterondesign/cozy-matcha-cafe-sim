@@ -1,0 +1,16 @@
+<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+  <!-- Honey jar shadow -->
+  <ellipse cx="40" cy="62" rx="20" ry="5" fill="#6f853a" opacity="0.15"/>
+  <!-- Jar body -->
+  <path d="M 25 50 L 28 25 Q 28 20 33 18 L 47 18 Q 52 20 52 25 L 55 50 Q 55 60 40 62 Q 25 60 25 50 Z" fill="#f0e8d8" stroke="#c9b5a0" stroke-width="1.5"/>
+  <!-- Jar rim/lid -->
+  <rect x="32" y="15" width="16" height="4" fill="#c9b5a0" stroke="#8b7355" stroke-width="1"/>
+  <!-- Jar handle -->
+  <path d="M 52 35 Q 62 35 62 50" fill="none" stroke="#c9b5a0" stroke-width="2" stroke-linecap="round"/>
+  <!-- Honey inside -->
+  <ellipse cx="40" cy="50" rx="13" ry="10" fill="#d4a574" opacity="0.8"/>
+  <!-- Honey shine -->
+  <ellipse cx="35" cy="45" rx="6" ry="4" fill="#f0d099" opacity="0.6"/>
+  <!-- Glass shine -->
+  <path d="M 30 25 Q 32 35 32 50" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.4"/>
+</svg>

@@ -1,4 +1,4 @@
-import {CELL_REGISTRY,LANDMARKS,cellAt,routeCells,isWalkableCell,nearestLandmark} from './scene-map.js?v=7';
+import {CELL_REGISTRY,LANDMARKS,cellAt,routeCells,isWalkableCell,nearestWalkableCell,nearestLandmark,setCafeBounds,grocerHeight} from './scene-map.js?v=10';
 import {loadParkAssets} from './gltf-pipeline.js?v=2';
 import {walkCycleFrame} from './animation.js';
 import {VISITOR_PATHS,sampleVisitorPath,visitorTarget,findViewEntry} from './visitor-paths.js?v=6';
@@ -12,6 +12,9 @@ const status=document.querySelector('output');
 const loading=document.querySelector('#park-loading'),loadingProgress=document.querySelector('#park-loading-progress');
 const loadingLabel=document.querySelector('#park-loading-label');
 function setLoadingProgress(value,label){loadingProgress.value=value;loadingLabel.textContent=label}
+// Skips DOM writes when the value is unchanged, so per-frame HUD updates don't dirty layout.
+function setText(el,text){if(el.textContent!==text)el.textContent=text}
+function setHidden(el,hidden){if(el.hidden!==hidden)el.hidden=hidden}
 let loadingWork=0,backgroundError='';
 function advanceLoading(amount,label){loadingWork+=amount;setLoadingProgress(loadingWork,label)}
 async function load(file){const img=new Image();img.src=file;await img.decode();return img}
@@ -133,6 +136,7 @@ const waveReward=document.querySelector('#wave-reward');
 let clickGoal=null,nearSpot=null,view={cx:0,cy:0,zoom:1},blockedUntil=0;
 let parkDog=null;
 let animationTime=0;
+const WAVE_STOP_DISTANCE=44;
 let hanaWalkDistance=0;
 let hanaDirection='down';
 let waveFacing='down';
@@ -180,7 +184,7 @@ onkeydown=e=>{
  }
  if(e.key.toLowerCase()==='e'){
   e.preventDefault();
-  if(!e.repeat&&nearSpot)nearSpot.go();
+  if(!e.repeat&&nearSpot&&testAction!=='wave')nearSpot.go();
   return;
  }
  if(e.target instanceof Element&&e.target.closest('button,summary'))return;
@@ -206,20 +210,76 @@ try{
  }
 }catch(error){console.warn('Park position could not be restored.',error)}
 window.addEventListener('matcha-pause',()=>localStorage.setItem('matcha-park-pause-position',JSON.stringify({x,y,direction:hanaDirection,facingLeft:hanaFacingLeft})));
+// Center of the painted dirt patch in world-day.webp. Move the café by changing these values.
+const CAFE_CENTER={x:478,y:322};
+function cafePlacement(){
+ const size=MatchaShop.read().selected;
+ const tierScale=size==='large'?1.2:size==='medium'?1:0.85;
+ // Scale so every tier's height matches the painted grocer; tiers differ only by tierScale.
+ const scale=grocerHeight()/buildingImage.height*tierScale;
+ const width=Math.round(buildingImage.width*scale);
+ const height=Math.round(buildingImage.height*scale);
+ return {left:Math.round(CAFE_CENTER.x-(width/2)),top:Math.round(CAFE_CENTER.y-(height/2)),width,height};
+}
+// Pre-renders each landmark's gold outline with its glow once, at 2× for zoom sharpness.
+const glowCache=new Map();
+function landmarkGlow(landmark){
+ if(!landmark.outline)return null;
+ if(glowCache.has(landmark.id))return glowCache.get(landmark.id);
+ const pad=12,scale=2;
+ const xs=landmark.outline.map(([px])=>px),ys=landmark.outline.map(([,py])=>py);
+ const minX=Math.min(...xs)-pad,minY=Math.min(...ys)-pad;
+ const w=Math.max(...xs)+pad-minX,h=Math.max(...ys)+pad-minY;
+ const canvas=document.createElement('canvas');
+ canvas.width=Math.ceil(w*scale);canvas.height=Math.ceil(h*scale);
+ const g=canvas.getContext('2d');
+ g.scale(scale,scale);g.translate(-minX,-minY);
+ g.lineJoin='round';g.lineCap='round';
+ const gold=g.createLinearGradient(0,200,0,950);
+ gold.addColorStop(0,'#fff1a7');gold.addColorStop(.5,'#e7ad3e');gold.addColorStop(1,'#fff0a0');
+ g.strokeStyle=gold;g.lineWidth=4;
+ g.shadowColor='#ffd873';g.shadowBlur=10;
+ g.beginPath();
+ landmark.outline.forEach(([px,py],index)=>index?g.lineTo(px,py):g.moveTo(px,py));
+ g.closePath();g.stroke();
+ const entry={canvas,x:minX,y:minY,w,h};
+ glowCache.set(landmark.id,entry);
+ return entry;
+}
+// Traces the café artwork's alpha silhouette into a gold outline canvas, cached per size.
+let cafeOutlineCache=null;
+function cafeOutline(width,height){
+ const key=buildingPath+'|'+width+'x'+height;
+ if(cafeOutlineCache?.key===key)return cafeOutlineCache;
+ const pad=10;
+ const canvas=document.createElement('canvas');
+ canvas.width=width+pad*2;canvas.height=height+pad*2;
+ const silhouette=document.createElement('canvas');
+ silhouette.width=canvas.width;silhouette.height=canvas.height;
+ const s=silhouette.getContext('2d');
+ s.drawImage(buildingImage,pad,pad,width,height);
+ s.globalCompositeOperation='source-in';
+ s.fillStyle='#ffd873';s.fillRect(0,0,canvas.width,canvas.height);
+ const g=canvas.getContext('2d');
+ for(const [radius,alpha] of [[6,0.28],[3,1]]){
+  g.globalAlpha=alpha;
+  for(let i=0;i<24;i++){
+   const angle=i/24*Math.PI*2;
+   g.drawImage(silhouette,Math.cos(angle)*radius,Math.sin(angle)*radius);
+  }
+ }
+ g.globalAlpha=1;
+ g.globalCompositeOperation='destination-out';
+ g.drawImage(silhouette,0,0);
+ cafeOutlineCache={key,canvas,pad};
+ return cafeOutlineCache;
+}
 function closestSpot(){
  if(testAction==='wave')return null;
  const landmark=nearestLandmark(x,y);
  let best=null;
- const cafeNearby=Math.hypot(450-x,590-y)<140;
  const gardenLandmark=landmark?.id==='garden';
- const cafeLandmark=landmark?.id==='cafe';
- if(cafeNearby&&!gardenLandmark){
-  best={id:'cafe',x:450,y:590,r:140,label:'Enter Café',go:()=>{
-   const position=JSON.stringify({x,y,direction:hanaDirection,facingLeft:hanaFacingLeft});
-   localStorage.setItem('matcha-park-pause-position',position);
-   location.href='../menu/';
-  }};
- }else if(landmark&&(gardenLandmark||cafeLandmark)){
+ if(landmark&&landmark.href){
   best={...landmark,...(gardenLandmark?{x,y:y-25}:{}),go:()=>{
    const position=JSON.stringify({x,y,direction:hanaDirection,facingLeft:hanaFacingLeft});
    if(gardenLandmark){
@@ -230,13 +290,13 @@ function closestSpot(){
   }};
  }
  const pal=visitors.find(person=>person.active&&Math.hypot(person.x-x,person.y-y)<78);
- if(pal&&!gardenLandmark&&!cafeNearby){
-  const d=Math.hypot(pal.x-x,pal.y-y);
-  if(!best||d<Math.hypot(best.x-x,best.y-y))best={id:'wave-'+pal.guest,x:pal.x,y:pal.y-8,r:78,label:'Wave to '+pal.guest,go:()=>{
+ if(pal&&!best){
+  best={id:'wave-'+pal.guest,x:pal.x,y:pal.y-8,r:78,label:'Wave to '+pal.guest,go:()=>{
    if(testAction==='wave')return;
    faceX=pal.x-x;faceY=pal.y-y;waveFacing=facingDirection(faceX,faceY);
    hanaDirection=waveFacing==='left'||waveFacing==='right'?'side':waveFacing;hanaFacingLeft=waveFacing==='left';
    setAction('wave');
+   pal.waveUntil=animationTime+2200;
   }};
  }
  return best;
@@ -283,10 +343,10 @@ function drawForeground(actor,bounds){
  for(const spec of foreground){
   if(!occludesActor(spec,actor,bounds))continue;
   if(!spec.dayLayer)prepareForeground(spec);
-  characterCtx.save();
-  characterCtx.beginPath();
-  characterCtx.rect(bounds.left,bounds.top,bounds.right-bounds.left,bounds.bottom-bounds.top);
-  characterCtx.clip();
+  // Draw only the overlap with the actor's bounds instead of clipping a full-layer draw.
+  const ix=Math.max(spec.x,bounds.left),iy=Math.max(spec.y,bounds.top);
+  const ex=Math.min(spec.x+spec.w,bounds.right),ey=Math.min(spec.y+spec.h,bounds.bottom);
+  if(ex<=ix||ey<=iy)continue;
   let layer=blend<.001?spec.dayLayer:blend>.999?spec.nightLayer:null;
   if(!layer){
    if(!spec.blendLayer){
@@ -305,8 +365,7 @@ function drawForeground(actor,bounds){
    }
    layer=spec.blendLayer;
   }
-  characterCtx.drawImage(layer,spec.x,spec.y);
-  characterCtx.restore();
+  characterCtx.drawImage(layer,ix-spec.x,iy-spec.y,ex-ix,ey-iy,ix,iy,ex-ix,ey-iy);
  }
 }
 function worldFromEvent(event){
@@ -320,8 +379,17 @@ canvas.addEventListener('pointerdown',event=>{
  lastClickX=point.x;
  lastClickY=point.y;
  if(!allowed(point.x,point.y)){
+  const nearWalkable=nearestWalkableCell(point.x,point.y);
+  if(nearWalkable){
+    clickGoal={x:nearWalkable.x,y:nearWalkable.y,at:performance.now()};
+    status.textContent='Walking there';
+    return;
+  }
   clickGoal=null;blockedUntil=performance.now()+1500;
-  status.textContent=nearestLandmark(x,y)?.id==='garden'?'Press E or tap Enter Garden':'Cannot walk there';
+  const lmId=nearestLandmark(x,y)?.id;
+  if(lmId==='garden')status.textContent='Press E or tap Enter Garden';
+  else if(lmId==='cafe')status.textContent='Press E or tap Enter Café';
+  else status.textContent='Cannot walk there';
   return;
  }
  clickGoal={x:point.x,y:point.y,at:performance.now()};
@@ -351,7 +419,7 @@ function tick(now){
  let len=Math.hypot(dx,dy);const stairs=x>475&&x<737&&y>388&&y<484;
  if(len)clickGoal=null;
  const busy=testAction==='wave';
- const want=busy||!len&&!clickGoal?0:stairs?96:80;
+ const want=busy||!len&&!clickGoal?0:stairs?105:88;
  const ease=want>walkVel?260:340;
  if(walkVel<want)walkVel=Math.min(want,walkVel+ease*dt);
  else walkVel=Math.max(want,walkVel-ease*dt);
@@ -359,8 +427,9 @@ function tick(now){
  for(const person of visitors){
   person.visibility=Math.max(0,Math.min(1,person.visibility+(person.active?1:-1)*dt*1.5));
   if(person.visibility===0)continue;
+  const waving=Boolean(person.waveUntil&&animationTime<person.waveUntil);
+  if(!waving)person.distance+=npcSettings.speed*dt;
   const previousLeg=Math.floor(person.distance/person.path.length);
-  person.distance+=npcSettings.speed*dt;
   if(Math.floor(person.distance/person.path.length)!==previousLeg){
    const next=visitorNames.map((name,index)=>(person.character+index+1)%visitorNames.length)
     .find(index=>visitorSprites[index]&&!visitors.some(other=>other!==person&&other.character===index));
@@ -369,8 +438,16 @@ function tick(now){
    person.sprites=visitorSprites[next];
   }
   Object.assign(person,sampleVisitorPath(person.path,person.distance));
-  person.opacity*=person.visibility;
   person.y+=npcSettings.offset;
+  const gapX=x-person.x,gapY=y-person.y,gap=Math.hypot(gapX,gapY);
+  const reach=waving?Math.max(0,gap-WAVE_STOP_DISTANCE)/(gap||1):0;
+  const easing=Math.min(1,dt*4);
+  person.approachX=(person.approachX||0)+(gapX*reach-(person.approachX||0))*easing;
+  person.approachY=(person.approachY||0)+(gapY*reach-(person.approachY||0))*easing;
+  person.x+=person.approachX;
+  person.y+=person.approachY;
+  person.waving=waving&&gap<=WAVE_STOP_DISTANCE+12;
+  person.opacity*=person.visibility;
   person.moving=npcSettings.speed>0;
  }
  if(!len&&clickGoal&&speed>8){
@@ -390,12 +467,18 @@ function tick(now){
  stepDog(dt);
  const travel=Math.hypot(x-beforeX,y-beforeY);
  if(clickGoal&&speed>4&&dt>0&&!travel){clickGoal=null;blockedUntil=now+1500}
- if(clickGoal)status.textContent='Walking there';
- else status.textContent=backgroundError||((len&&!travel&&!busy||now<blockedUntil)?(nearestLandmark(x,y)?.id==='garden'?'Press E or tap Enter Garden':'Cannot walk there'):stairs?'Stone steps':'');
+ if(clickGoal)setText(status,'Walking there');
+ else if(backgroundError)setText(status,backgroundError);
+ else if(len&&!travel&&!busy||now<blockedUntil){
+  const lmId=nearestLandmark(x,y)?.id;
+  if(lmId==='garden')setText(status,'Press E or tap Enter Garden');
+  else if(lmId==='cafe')setText(status,'Press E or tap Enter Café');
+  else setText(status,'Cannot walk there');
+ }else setText(status,stairs?'Stone steps':'');
  nearSpot=closestSpot();
  if(hintEl){
-  hintEl.hidden=!nearSpot;
-  if(nearSpot)hintEl.querySelector('b').textContent='E · '+nearSpot.label;
+  setHidden(hintEl,!nearSpot);
+  if(nearSpot)setText(hintEl.querySelector('b'),'E · '+nearSpot.label);
  }
  const w=canvas.clientWidth,h=canvas.clientHeight,dpr=Math.min(devicePixelRatio,compactForTouch?1.25:2);
  if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr)}
@@ -436,26 +519,16 @@ function tick(now){
  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
  blend=reduce?blendTarget:blend+(blendTarget-blend)*(1-Math.exp(-dt*1.6));
  ctx.setTransform(dpr*zoom,0,0,dpr*zoom,-cx*dpr*zoom,-cy*dpr*zoom);
- ctx.globalAlpha=1;ctx.drawImage(day||night,0,0,2048,1152);
- if(blend>0.001){ctx.globalAlpha=blend;ctx.drawImage(night||day,0,0,2048,1152);ctx.globalAlpha=1}
+ // Only the visible part of the 4096px artwork is drawn; the rest is never rasterized.
+ const sx=cx*2,sy=cy*2,sw=cw*2,sh=ch*2;
+ ctx.globalAlpha=1;
+ if(day||night)ctx.drawImage(day||night,sx,sy,sw,sh,cx,cy,cw,ch);
+ if(blend>0.001){ctx.globalAlpha=blend;if(night||day)ctx.drawImage(night||day,sx,sy,sw,sh,cx,cy,cw,ch);ctx.globalAlpha=1}
  if(buildingImage){
-  const width=720,height=360;
-  const left=450-(width/2);
-  const top=520-height;
+  const {left,top,width,height}=cafePlacement();
+  setCafeBounds({left,top,right:left+width,bottom:top+height});
   ctx.globalAlpha=1-blend*0.15;
   ctx.drawImage(buildingImage,left,top,width,height);
-  if(blend>0.1){
-   ctx.globalAlpha=blend*0.25;
-   const gradient=ctx.createLinearGradient(top,0,top+40,0);
-   gradient.addColorStop(0,'#1a141000');
-   gradient.addColorStop(0.3,'#1a1410');
-   gradient.addColorStop(1,'#1a1410');
-   ctx.fillStyle=gradient;
-   ctx.fillRect(left,top,width,Math.min(40,height));
-   ctx.globalAlpha=blend*0.25;
-   ctx.fillStyle='#1a1410';
-   ctx.fillRect(left,top+40,width,height-40);
-  }
   ctx.globalAlpha=1;
  }
  if(blend>.02){
@@ -470,18 +543,16 @@ function tick(now){
   ctx.globalCompositeOperation='source-over';
  }
  ctx.save();
- ctx.lineJoin='round';ctx.lineCap='round';
  const outlinePulse=reduce?0.65:0.65+0.35*Math.sin(now/700);
- const gold=ctx.createLinearGradient(0,200,0,950);
- gold.addColorStop(0,'#fff1a7');gold.addColorStop(.5,'#e7ad3e');gold.addColorStop(1,'#fff0a0');
- ctx.strokeStyle=gold;ctx.lineWidth=3+outlinePulse;
- ctx.shadowColor='#ffd873';ctx.shadowBlur=7+outlinePulse*7;
  ctx.globalAlpha=.72+outlinePulse*.25;
+ if(buildingImage){
+  const {left,top,width,height}=cafePlacement();
+  const outline=cafeOutline(width,height);
+  ctx.drawImage(outline.canvas,left-outline.pad,top-outline.pad);
+ }
  for(const landmark of LANDMARKS){
-  if(!landmark.outline)continue;
-  ctx.beginPath();
-  landmark.outline.forEach(([px,py],index)=>index?ctx.lineTo(px,py):ctx.moveTo(px,py));
-  ctx.closePath();ctx.stroke();
+  const glow=landmarkGlow(landmark);
+  if(glow)ctx.drawImage(glow.canvas,glow.x,glow.y,glow.w,glow.h);
  }
  ctx.restore();
  ctx.fillStyle='#322e2828';
@@ -531,7 +602,7 @@ function tick(now){
  }
  requestAnimationFrame(tick)
 }
-const npcSettings={count:2,speed:85,height:85,offset:0};
+const npcSettings={count:2,speed:93,height:85,offset:0};
 const visitorNames=['Sota','Hana','Mio','Ken','Ren','Aya'];
 const visitors=visitorNames.slice(0,2).map((guest,id)=>{
  const path=VISITOR_PATHS[id%VISITOR_PATHS.length];
@@ -799,7 +870,7 @@ try{
    if((isPlayer&&currentSprite())||(!isPlayer&&!person.active)){actor.root.visible=false;continue}
    actor.root.visible=true;
    const px=isPlayer?x:person.x,py=isPlayer?y:person.y;
-   const busy=isPlayer?testAction==='wave':person.waveUntil&&animationTime<person.waveUntil;
+   const busy=isPlayer?testAction==='wave':Boolean(person.waving);
    const moving=!busy&&(isPlayer?travel>0:!!person.moving);
    const dogWalking=person.goalState==='WALK_DOG'&&Boolean(person.actionUntil)&&animationTime<person.actionUntil;
    const mode=busy?'wave':dogWalking?'walk-dog'

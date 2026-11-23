@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import {walkCycleFrame} from '../park/animation.js';
-import {CELL_REGISTRY,cellAt,isWalkableCell,nearestLandmark,routeCells} from '../park/scene-map.js';
+import {CELL_REGISTRY,cellAt,isWalkableCell,nearestLandmark,routeCells,setCafeBounds} from '../park/scene-map.js';
 import {VISITOR_PATHS,sampleVisitorPath,visitorTarget,findViewEntry} from '../park/visitor-paths.js';
 import {FOREGROUND_POLYGONS,occludesActor,polygonBounds} from '../park/scene-occlusion.js';
 
@@ -62,7 +62,7 @@ test('park cells register movement surfaces, anchors, exits, and colliders',()=>
   assert.equal(isWalkableCell(1725,1055),true);
   assert.equal(isWalkableCell(1660,580),true);
   assert.equal(isWalkableCell(1200,700),true);
-  assert.equal(isWalkableCell(500,500),true);
+  assert.equal(isWalkableCell(500,500),false);
   assert.equal(isWalkableCell(NaN,920),false);
 });
 
@@ -96,12 +96,20 @@ test('garden and grocer interactions are reachable from their entrances',()=>{
 });
 
 test('garden interaction covers reachable sides of the garden without extending across the park',()=>{
-  for(const [x,y] of [[700,905],[750,680],[650,575],[400,505],[430,990],[250,950]]){
+  for(const [x,y] of [[700,905],[750,680],[650,575],[350,550],[430,990],[250,950]]){
     assert.equal(isWalkableCell(x,y),true);
     assert.equal(nearestLandmark(x,y)?.id,'garden',`No garden interaction at ${x},${y}`);
   }
   assert.equal(nearestLandmark(800,650),null);
   assert.equal(nearestLandmark(1805,560)?.id,'grocer');
+});
+
+test('café interaction follows the drawn building and wins over the garden when nearer',()=>{
+  setCafeBounds({left:234,top:255,right:666,bottom:425});
+  assert.equal(nearestLandmark(450,440)?.id,'cafe');
+  assert.equal(nearestLandmark(1200,400),null);
+  assert.equal(nearestLandmark(400,520)?.id,'garden');
+  assert.equal(nearestLandmark(700,905)?.id,'garden');
 });
 
 test('pond and rocks are blocked while the bridge and path remain walkable',()=>{
@@ -204,4 +212,10 @@ test('Hana directional sheets provide transparent sixteen-frame cycles',()=>{
     assert.equal(walkCycleFrame(129,16,130),15);
     assert.equal(walkCycleFrame(130,16,130),0);
   }
+});
+
+test('standing in front of the café prefers the café over the nearby garden edge',()=>{
+  setCafeBounds({left:300,top:200,right:650,bottom:520});
+  assert.equal(nearestLandmark(420,560)?.id,'cafe');
+  assert.equal(isWalkableCell(500,500),false);
 });

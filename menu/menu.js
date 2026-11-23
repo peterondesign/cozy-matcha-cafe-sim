@@ -1,5 +1,6 @@
 (() => { try {
 import('../shared/asset-preloader.js?v=3').then(m => m.startAssetPreloading()).catch(error => console.error('Game preloader failed.', error));
+import('./recipes.js?v=2').then(m => window.MatchaRecipes = m).catch(error => console.error('Recipe module failed.', error));
 
 const toast = document.getElementById('toast');
 const audio = window.MatchaAudio;
@@ -65,7 +66,7 @@ function notify(message) {
 const shelf = document.getElementById('shelf');
 const shelves = {
   inventory: 'The bag is packed. New tools show up here as the cart grows.',
-  recipes: 'The book is open to Iced Matcha Latte.',
+  recipes: 'Browse all our delicious matcha drinks and their recipes.',
   leaderboard: 'Café service stats'
 };
 function restockLink() {
@@ -163,6 +164,87 @@ function paintLeaderboard() {
     });
   });
 }
+
+function paintRecipes(detailId = null) {
+  const body = document.getElementById('shelfBody');
+  
+  if (!window.MatchaRecipes || !window.MatchaRecipes.RECIPES) {
+    body.innerHTML = '<p style="text-align: center; color: #7d684c;">Recipe module loading...</p>';
+    return;
+  }
+
+  if (detailId) {
+    const recipe = window.MatchaRecipes.getRecipe(detailId);
+    if (!recipe) return;
+    
+    body.innerHTML = `
+      <div class="recipe-detail">
+        <button class="recipe-back-button" data-action="recipes-back">← Back to Recipes</button>
+        
+        <div class="recipe-detail-header">
+          <div class="recipe-detail-image">
+            <img src="${recipe.image}" alt="${recipe.name}" loading="lazy">
+          </div>
+          <div class="recipe-detail-info">
+            <h2 class="recipe-detail-title">${recipe.name}</h2>
+            <p class="recipe-detail-description">${recipe.description}</p>
+            ${recipe.core ? '<span style="font-weight: 700; color: #6f853a;">✓ Core Recipe</span>' : ''}
+          </div>
+        </div>
+
+        <section class="recipe-ingredients-section">
+          <h3 class="recipe-section-title">Ingredients</h3>
+          <ul class="recipe-ingredients-list">
+            ${recipe.ingredients.map(ing => `
+              <li class="recipe-ingredient">
+                <div class="recipe-ingredient-icon">
+                  <img src="${ing.icon}" alt="${ing.item}" loading="lazy">
+                </div>
+                <div class="recipe-ingredient-name">${ing.item}</div>
+                ${ing.quantity ? `<div class="recipe-ingredient-quantity">${ing.quantity}${ing.unit ? ' ' + ing.unit : ''}</div>` : ''}
+              </li>
+            `).join('')}
+          </ul>
+        </section>
+
+        <section class="recipe-steps-section">
+          <h3 class="recipe-section-title" style="--section-emoji: '👩‍🍳';">Steps</h3>
+          <ol class="recipe-steps-list">
+            ${recipe.steps.map(step => `
+              <li class="recipe-step">
+                <div class="recipe-step-icon">
+                  <img src="${step.icon}" alt="Step ${step.number}" loading="lazy">
+                </div>
+                <div class="recipe-step-content">
+                  <p class="recipe-step-action"><strong>Step ${step.number}:</strong> ${step.action}</p>
+                </div>
+              </li>
+            `).join('')}
+          </ol>
+        </section>
+      </div>
+    `;
+    
+    body.querySelector('[data-action="recipes-back"]').addEventListener('click', () => paintRecipes());
+    return;
+  }
+
+  body.innerHTML = `
+    <div class="recipe-grid">
+      ${window.MatchaRecipes.RECIPES.map(recipe => `
+        <button class="recipe-card" data-recipe-id="${recipe.id}">
+          <img src="${recipe.image}" alt="${recipe.name}" loading="lazy">
+          <div class="recipe-card-name">${recipe.name}</div>
+          ${recipe.core ? '<div class="recipe-card-tag">Core</div>' : ''}
+        </button>
+      `).join('')}
+    </div>
+  `;
+
+  body.querySelectorAll('.recipe-card').forEach(card => {
+    card.addEventListener('click', () => paintRecipes(card.dataset.recipeId));
+  });
+}
 function openShelf(action) {
   mainMenu.hidden = true;
   matcha.hidden = true;
@@ -172,9 +254,10 @@ function openShelf(action) {
   const text = document.getElementById('shelfText');
   const body = document.getElementById('shelfBody');
   text.hidden = action !== 'recipes';
-  body.hidden = !['inventory', 'leaderboard', 'upgrades'].includes(action);
+  body.hidden = !['inventory', 'leaderboard', 'upgrades', 'recipes'].includes(action);
   if (action === 'inventory') paintInventory();
   else if (action === 'leaderboard') paintLeaderboard();
+  else if (action === 'recipes') paintRecipes();
   else if (action === 'upgrades') paintUpgrades();
   else { text.textContent = shelves[action]; body.replaceChildren(); restockLink().hidden = true; }
 }

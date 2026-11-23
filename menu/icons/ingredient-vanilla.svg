@@ -1,0 +1,17 @@
+<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+  <!-- Bottle shadow -->
+  <ellipse cx="40" cy="62" rx="16" ry="5" fill="#6f853a" opacity="0.15"/>
+  <!-- Bottle body -->
+  <path d="M 28 50 Q 28 45 32 42 L 32 25 Q 32 20 40 18 Q 48 20 48 25 L 48 42 Q 52 45 52 50 L 52 58 Q 52 62 40 62 Q 28 62 28 58 Z" fill="#f0e8d8" stroke="#c9b5a0" stroke-width="1.5"/>
+  <!-- Bottle neck -->
+  <rect x="38" y="12" width="4" height="8" fill="#c9b5a0" stroke="#8b7355" stroke-width="1"/>
+  <!-- Cap -->
+  <circle cx="40" cy="11" r="4" fill="#8b7355"/>
+  <!-- Liquid inside (vanilla) -->
+  <ellipse cx="40" cy="50" rx="12" ry="8" fill="#ebe4d4" opacity="0.8"/>
+  <!-- Glass shine -->
+  <path d="M 32 35 Q 33 45 32 55" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.4"/>
+  <!-- Vanilla bean illustration -->
+  <path d="M 38 48 Q 40 46 42 48" fill="none" stroke="#8b7355" stroke-width="1" opacity="0.5"/>
+  <path d="M 38 52 Q 40 50 42 52" fill="none" stroke="#8b7355" stroke-width="1" opacity="0.5"/>
+</svg>

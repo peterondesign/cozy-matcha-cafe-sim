@@ -3,8 +3,9 @@ const cells = [
   {id:'west-path',type:'path',x:520,y:1036,clearance:72,neighbors:['entrance']},
   {id:'gate-path',type:'gate',x:800,y:760,clearance:112,neighbors:['entrance','garden-path','lawn-path']},
   {id:'garden-path',type:'path',x:790,y:640,clearance:72,neighbors:['gate-path','crossing']},
-  {id:'lawn-path',type:'path',x:980,y:610,clearance:72,neighbors:['gate-path']},
-  {id:'crossing',type:'path',x:820,y:540,clearance:76,neighbors:['garden-path','north-detour','north-west']},
+  {id:'lawn-path',type:'path',x:980,y:610,clearance:72,neighbors:['gate-path','cafe-access']},
+  {id:'cafe-access',type:'path',x:450,y:730,clearance:100,neighbors:['lawn-path','crossing']},
+  {id:'crossing',type:'path',x:820,y:540,clearance:76,neighbors:['garden-path','north-detour','north-west','cafe-access']},
   {id:'north-detour',type:'path',x:1040,y:420,clearance:76,neighbors:['crossing','north-curve']},
   {id:'north-west',type:'path',x:760,y:500,clearance:72,neighbors:['crossing']},
   {id:'north-curve',type:'path',x:1080,y:490,clearance:76,neighbors:['north-detour','plaza']},
@@ -35,7 +36,8 @@ const cells = [
   {id:'blocked-bench-west',type:'blocked',polygon:[[1212,132],[1312,124],[1316,151],[1214,168]]},
   {id:'blocked-bench-east',type:'blocked',polygon:[[1445,137],[1535,151],[1535,178],[1445,163]]},
   {id:'blocked-garden',type:'blocked',polygon:[[0,630],[190,548],[345,570],[590,650],[640,705],[680,780],[710,805],[710,855],[675,875],[645,935],[300,875],[0,790]]},
-  {id:'blocked-shop',type:'blocked',polygon:[[1640,350],[1680,340],[1900,376],[2048,280],[2048,500],[1900,565],[1660,470]]},
+  {id:'blocked-cafe',type:'blocked',polygon:[[90,160],[810,160],[810,520],[90,520]]},
+  {id:'blocked-shop',type:'blocked',polygon:[[1640,350],[1680,330],[1900,370],[2048,280],[2048,500],[1900,565],[1660,470]]},
   {id:'blocked-water-west',type:'blocked',polygon:[[1500,1120],[1675,1040],[1750,1065],[1680,1152],[1500,1152]]},
   {id:'blocked-water-north',type:'blocked',polygon:[[1810,960],[1840,940],[1880,915],[1920,897],[1960,885],[2010,878],[2048,875],[2048,1003],[1990,999],[1950,990],[1910,966],[1870,953],[1840,950]]},
   {id:'blocked-water-south',type:'blocked',polygon:[[1675,1105],[1750,1065],[1810,1070],[1870,1095],[1905,1110],[1905,1152],[1675,1152]]},
@@ -52,22 +54,55 @@ export const CELL_REGISTRY = Object.freeze(Object.fromEntries(
 ));
 
 export const LANDMARKS = [
-  {id:'garden',x:700,y:905,r:135,perimeterRadius:110,label:'Enter Garden',href:'../garden/',
+  {id:'garden',x:700,y:905,r:120,perimeterRadius:110,label:'Enter Garden',href:'../garden/',
    outline:[[0,600],[190,540],[345,565],[600,640],[640,705],[680,780],[710,805],[710,855],[675,875],[645,935],[490,925],[0,805]]},
   {id:'grocer',x:1805,y:565,r:125,label:'Village Grocer',href:'../grocer/',
    outline:[[1648,280],[1805,165],[1810,158],[1840,163],[1980,215],[2048,245],[2048,500],[1900,565],[1660,470],[1650,350],[1620,335],[1620,315],[1648,305]]},
-  {id:'cafe',x:450,y:590,r:140}
+  // Center of the painted dirt patch in the park artwork (world-day.webp); park.js draws the café here.
+  {id:'cafe',label:'Enter Café',href:'../counter/',perimeterRadius:90,priority:25,bounds:null,x:478,y:322}
 ];
 
+// Height of the painted grocer in world px. Café artwork is scaled to this height.
+export function grocerHeight() {
+  const ys=LANDMARKS.find(landmark=>landmark.id==='grocer').outline.map(([,y])=>y);
+  return Math.max(...ys)-Math.min(...ys);
+}
+
+// Called by park.js once the café artwork size is known. Keeps the café's
+// walk block and proximity bounds on the drawn footprint.
+export function setCafeBounds(bounds) {
+  const cafe=LANDMARKS.find(landmark=>landmark.id==='cafe');
+  cafe.bounds=bounds;
+  cafe.x=(bounds.left+bounds.right)/2;
+  cafe.y=bounds.bottom;
+  const block=CELL_REGISTRY['blocked-cafe'].polygon;
+  block.length=0;
+  block.push([bounds.left,bounds.top],[bounds.right,bounds.top],[bounds.right,bounds.bottom],[bounds.left,bounds.bottom]);
+}
+
+// priority gives a landmark a head start, so standing in front of the café picks the café over the nearby garden edge.
 export function nearestLandmark(x,y) {
-  let nearest=null,distance=Infinity;
+  let nearest=null,score=Infinity;
   for(const landmark of LANDMARKS){
-    const d=landmark.perimeterRadius
-      ? distanceToPolygon(landmark.outline,x,y)
-      : Math.hypot(landmark.x-x,landmark.y-y);
-    if(d<(landmark.perimeterRadius||landmark.r)&&d<distance){nearest=landmark;distance=d}
+    const d=landmarkDistance(landmark,x,y);
+    if(d>=(landmark.perimeterRadius||landmark.r))continue;
+    const s=d-(landmark.priority||0);
+    if(s<score){nearest=landmark;score=s}
   }
   return nearest;
+}
+
+function landmarkDistance(landmark,x,y) {
+  if(landmark.bounds)return distanceToRect(landmark.bounds,x,y);
+  if(landmark.perimeterRadius&&landmark.outline)return distanceToPolygon(landmark.outline,x,y);
+  if(landmark.perimeterRadius)return Infinity;
+  return Math.hypot(landmark.x-x,landmark.y-y);
+}
+
+function distanceToRect(rect,x,y) {
+  const dx=Math.max(rect.left-x,0,x-rect.right);
+  const dy=Math.max(rect.top-y,0,y-rect.bottom);
+  return Math.hypot(dx,dy);
 }
 
 function distanceToPolygon(points,x,y) {
@@ -145,4 +180,16 @@ export function isWalkableCell(x,y) {
   if(!Number.isFinite(x)||!Number.isFinite(y))return false;
   if(x<60||x>1990||y<70||y>1120)return false;
   return cellAt(x,y).type!=='blocked';
+}
+
+export function nearestWalkableCell(x,y,radius=120) {
+  if(isWalkableCell(x,y))return {x,y};
+  let nearest=null,nearestDist=Infinity;
+  for(let dx=-radius;dx<=radius;dx+=8){
+    for(let dy=-radius;dy<=radius;dy+=8){
+      const nx=x+dx,ny=y+dy,d=dx*dx+dy*dy;
+      if(d<nearestDist&&isWalkableCell(nx,ny)){nearest={x:nx,y:ny};nearestDist=d}
+    }
+  }
+  return nearest;
 }

@@ -1,0 +1,18 @@
+<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+  <!-- Sugar cube shadow -->
+  <ellipse cx="40" cy="62" rx="22" ry="5" fill="#6f853a" opacity="0.15"/>
+  <!-- Sugar cube group - stack of 3 -->
+  <g>
+    <!-- Back cubes -->
+    <rect x="25" y="35" width="12" height="12" fill="#f5f1e8" stroke="#c9b5a0" stroke-width="1"/>
+    <rect x="40" y="35" width="12" height="12" fill="#f5f1e8" stroke="#c9b5a0" stroke-width="1"/>
+    <!-- Front cubes -->
+    <rect x="32" y="47" width="12" height="12" fill="#fff8f0" stroke="#c9b5a0" stroke-width="1"/>
+  </g>
+  <!-- Sugar crystal texture -->
+  <circle cx="31" cy="41" r="1.5" fill="#e8e0d8" opacity="0.6"/>
+  <circle cx="46" cy="41" r="1.5" fill="#e8e0d8" opacity="0.6"/>
+  <circle cx="38" cy="53" r="1.5" fill="#e8e0d8" opacity="0.6"/>
+  <!-- Sparkle effect -->
+  <circle cx="35" cy="45" r="2" fill="#f5f1e8" opacity="0.4"/>
+</svg>

@@ -1,0 +1,16 @@
+<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+  <!-- Kettle body -->
+  <path d="M 20 50 Q 20 30 40 20 Q 60 30 60 50 L 60 55 Q 60 65 40 65 Q 20 65 20 55 Z" fill="#c9b5a0" stroke="#8b7355" stroke-width="1.5"/>
+  <!-- Spout -->
+  <path d="M 60 45 Q 70 42 72 48" fill="none" stroke="#8b7355" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Handle -->
+  <path d="M 20 45 Q 10 45 10 55 Q 10 60 20 60" fill="none" stroke="#8b7355" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Lid -->
+  <ellipse cx="40" cy="20" rx="12" ry="5" fill="#8b7355"/>
+  <!-- Steam wisps -->
+  <path d="M 35 10 Q 33 5 35 0" fill="none" stroke="#b0a090" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+  <path d="M 40 8 Q 42 2 40 -3" fill="none" stroke="#b0a090" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+  <path d="M 45 10 Q 47 5 45 0" fill="none" stroke="#b0a090" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+  <!-- Water inside kettle -->
+  <path d="M 25 50 Q 25 40 40 32 Q 55 40 55 50 Z" fill="#8db4d9" opacity="0.4"/>
+</svg>
