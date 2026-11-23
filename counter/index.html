@@ -884,7 +884,7 @@ function listenKeys(onDown, onUp) {
     window.removeEventListener('keyup', up, true);
   };
 }
-function playGame(id) {
+function playGame(id, onAct) {
   const kind = ACTIONS[id].game || id;
   const spec = GAMES[kind];
   const mini = document.getElementById('mini');
@@ -905,12 +905,12 @@ function playGame(id) {
     felt.innerHTML = '';
     return value;
   };
-  if (kind === 'whisk') return playBall(felt, card).then(finish);
-  if (kind === 'ice') return playTube(felt, card).then(finish);
-  if (kind === 'milk') return playGreen(felt, card).then(finish);
-  return playDial(felt, card).then(finish);
+  if (kind === 'whisk') return playBall(felt, card, onAct).then(finish);
+  if (kind === 'ice') return playTube(felt, card, onAct).then(finish);
+  if (kind === 'milk') return playGreen(felt, card, onAct).then(finish);
+  return playDial(felt, card, onAct).then(finish);
 }
-function playBall(felt, card) {
+function playBall(felt, card, onAct) {
   return new Promise(resolve => {
     felt.innerHTML = '<div class="orbit" id="orbit"></div><div class="puck" id="puck"></div>';
     const orbit = felt.querySelector('#orbit');
@@ -926,9 +926,11 @@ function playBall(felt, card) {
     const unlisten = listenKeys(event => {
       if (!arrows[event.key]) return;
       event.preventDefault();
+      onAct();
       keys.add(event.key);
     }, event => keys.delete(event.key));
     const onPointer = event => {
+      if (event.type === 'pointerdown' || event.type === 'pointermove') onAct();
       const box = felt.getBoundingClientRect();
       px = (event.clientX - box.left) / box.width;
       py = (event.clientY - box.top) / box.height;
@@ -983,7 +985,7 @@ function playBall(felt, card) {
     frame = requestAnimationFrame(tick);
   });
 }
-function playTube(felt, card) {
+function playTube(felt, card, onAct) {
   return new Promise(resolve => {
     felt.innerHTML = '<div class="tube-wrap"><div class="tube"><div class="liquid" id="liquid"></div><div class="gold"></div></div></div>';
     const liquid = felt.querySelector('#liquid');
@@ -1002,9 +1004,10 @@ function playTube(felt, card) {
     const unlisten = listenKeys(event => {
       if (!held(event)) return;
       event.preventDefault();
+      onAct();
       holding = true;
     }, event => { if (held(event)) stop(); });
-    felt.addEventListener('pointerdown', () => { holding = true; });
+    felt.addEventListener('pointerdown', () => { onAct(); holding = true; });
     felt.addEventListener('pointerup', stop);
     felt.addEventListener('pointerleave', () => { if (holding) stop(); });
     const tick = now => {
@@ -1017,7 +1020,7 @@ function playTube(felt, card) {
     requestAnimationFrame(tick);
   });
 }
-function playGreen(felt, card) {
+function playGreen(felt, card, onAct) {
   return new Promise(resolve => {
     felt.innerHTML = '<div class="track"><div class="zone"></div><div class="marker" id="marker"></div></div>';
     const marker = felt.querySelector('#marker');
@@ -1038,9 +1041,10 @@ function playGreen(felt, card) {
     const unlisten = listenKeys(event => {
       if (!['Space', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.code)) return;
       event.preventDefault();
+      onAct();
       stop();
     });
-    felt.addEventListener('pointerdown', stop);
+    felt.addEventListener('pointerdown', () => { onAct(); stop(); });
     const tick = () => {
       if (stopped) return;
       t += 0.085;
@@ -1051,7 +1055,7 @@ function playGreen(felt, card) {
     requestAnimationFrame(tick);
   });
 }
-function playDial(felt, card) {
+function playDial(felt, card, onAct) {
   return new Promise(resolve => {
     const target = 40 + Math.random() * 280;
     felt.innerHTML = `<div class="dial" id="dial"><div class="wedge" id="wedge"></div><div class="needle" id="needle"></div></div><div class="spin"><button type="button" id="turnLeft" aria-label="Turn left">←</button><button type="button" id="turnRight" aria-label="Turn right">→</button></div>`;
@@ -1075,13 +1079,14 @@ function playDial(felt, card) {
     const unlisten = listenKeys(event => {
       if (!['ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD'].includes(event.code)) return;
       event.preventDefault();
+      onAct();
       turning.add(event.code);
     }, event => turning.delete(event.code));
-    dial.addEventListener('pointerdown', event => { dial.setPointerCapture(event.pointerId); fromPointer(event); });
+    dial.addEventListener('pointerdown', event => { onAct(); dial.setPointerCapture(event.pointerId); fromPointer(event); });
     dial.addEventListener('pointermove', event => { if (event.buttons) fromPointer(event); });
     const holdButton = (button, delta) => {
-      button.addEventListener('click', () => aim(angle + delta * 5));
-      button.addEventListener('pointerdown', () => { hold = delta; });
+      button.addEventListener('click', () => { onAct(); aim(angle + delta * 5); });
+      button.addEventListener('pointerdown', () => { onAct(); hold = delta; });
       button.addEventListener('pointerup', () => { hold = 0; });
       button.addEventListener('pointerleave', () => { hold = 0; });
     };
@@ -1107,9 +1112,10 @@ function playDial(felt, card) {
   });
 }
 async function loopFrames(id, spec, playing) {
+  while (!playing.acted && !playing.done) await wait(40);
+  if (!playing.acted) return;
   if (spec.clear) spec.clear.forEach(slot => { held[slot] = null; });
   for (const frame of spec.frames) {
-    if (playing.done) break;
     held[spec.slot] = await loadImage(frameSrc(id, frame));
     draw();
     await wait(110);
@@ -1125,12 +1131,15 @@ async function playStep() {
   if (id === 'serve') { window.MatchaAudio && window.MatchaAudio.playEffect('serve'); await serveOrder(); return; }
   const spec = ACTIONS[id];
   const sound = spec.sound || id;
-  if (sound !== 'whisk' && window.MatchaAudio) window.MatchaAudio.playEffect(sound);
   phase = 'playing';
   render();
-  const playing = { done: false };
+  const playing = { done: false, acted: false };
   const frames = loopFrames(id, spec, playing);
-  const score = await playGame(id);
+  const score = await playGame(id, () => {
+    if (playing.acted) return;
+    playing.acted = true;
+    if (sound !== 'whisk' && window.MatchaAudio) window.MatchaAudio.playEffect(sound);
+  });
   playing.done = true;
   await frames;
   stepScores.push(score);

@@ -19,7 +19,18 @@ From the repository root, start a static server:
 python3 -m http.server 8765
 ```
 
-Then open <http://127.0.0.1:8765/>. Use **WASD** or the arrow keys to walk in
+Then open <http://127.0.0.1:8765/>.
+
+## Launch on Vercel
+
+This is a static site. There is no build step.
+
+1. Push the repository to GitHub if it is not already there.
+2. In [Vercel](https://vercel.com/new), import the repository.
+3. Leave the framework as **Other**, the build command empty, and the output directory as the repository root.
+4. Deploy. The live site opens on the menu at `/`.
+
+From the project folder you can also run `npx vercel` and follow the prompts. `vercel.json` keeps directory URLs like `/menu/` and `/counter/` so relative images and scripts keep working. Use **WASD** or the arrow keys to walk in
 the park; press **E** near a visitor to wave or near the garden or grocer to
 enter, and **C** to call the dog.
 The on-screen direction pad and interaction hint are also available.
