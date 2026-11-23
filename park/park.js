@@ -1,8 +1,8 @@
-import {CELL_REGISTRY,LANDMARKS,cellAt,routeCells,isWalkableCell,nearestLandmark} from './scene-map.js?v=6';
+import {CELL_REGISTRY,LANDMARKS,cellAt,routeCells,isWalkableCell,nearestLandmark} from './scene-map.js?v=7';
 import {loadParkAssets} from './gltf-pipeline.js?v=2';
 import {walkCycleFrame} from './animation.js';
-import {VISITOR_PATHS,sampleVisitorPath,visitorTarget,findViewEntry} from './visitor-paths.js?v=5';
-import {FOREGROUND_POLYGONS,occludesActor,polygonBounds} from './scene-occlusion.js?v=4';
+import {VISITOR_PATHS,sampleVisitorPath,visitorTarget,findViewEntry} from './visitor-paths.js?v=6';
+import {FOREGROUND_POLYGONS,occludesActor,polygonBounds} from './scene-occlusion.js?v=5';
 import {resolveSprite,spriteFrame,facingDirection,playerActionKey} from '../shared/sprite-actions.js';
 
 const canvas=document.querySelector('#park'), ctx=canvas.getContext('2d');
@@ -15,13 +15,22 @@ function setLoadingProgress(value,label){loadingProgress.value=value;loadingLabe
 let loadingWork=0,backgroundError='';
 function advanceLoading(amount,label){loadingWork+=amount;setLoadingProgress(loadingWork,label)}
 async function load(file){const img=new Image();img.src=file;await img.decode();return img}
+const compactForTouch=matchMedia('(pointer: coarse)').matches;
+async function loadArtwork(file){
+ const image=await load(file);
+ if(!compactForTouch||image.width<=2048)return image;
+ const compact=document.createElement('canvas');
+ compact.width=2048;compact.height=1152;
+ compact.getContext('2d').drawImage(image,0,0,compact.width,compact.height);
+ return compact;
+}
 const spriteManifestUrl=new URL('../rigging-test/action-assets.json?v=2',import.meta.url);
 const spriteImages=new Map();
 async function loadSpriteSheet(url,sheet,action,character){
  const image=await load(url);
  if(image.width%sheet.columns||image.height%sheet.rows)throw new Error(`Invalid sprite dimensions: ${action}:${character}`);
  const cellWidth=image.width/sheet.columns,cellHeight=image.height/sheet.rows;
- const scale=Math.min(1,320/cellWidth);
+ const scale=Math.min(1,(compactForTouch?192:320)/cellWidth);
  const compact=document.createElement('canvas');
  compact.width=Math.round(cellWidth*scale)*sheet.columns;
  compact.height=Math.round(cellHeight*scale)*sheet.rows;
@@ -47,13 +56,17 @@ async function loadCharacterSprites(manifest,character,walkingOnly=false){
 const T=globalThis.MatchaThree;
 if(!T)throw new Error('The park 3D renderer could not load.');
 const initialNight=clockNightMix(MatchaWorld.clock.read().minutes??480)>=.5;
-const artPromise=load(initialNight?'world-night.webp':'world-day.webp').then(image=>{
+const artPromise=loadArtwork(initialNight?'world-night.webp':'world-day.webp').then(image=>{
  advanceLoading(40,'Loading park artwork');return image;
 }).catch(error=>{status.textContent='Park artwork could not load. Refresh to retry.';throw error});
-const buildingPromise=Promise.all([1,2,3,4].map(async tier=>{
- const image=await load(`../menu/layers/shop/building-tier-${tier}.png`);
- return [tier,image];
- })).then(entries=>new Map(entries));
+const buildingImages=new Map();
+let buildingPath=MatchaShop.asset(MatchaShop.read().selected,MatchaShop.read().activeDecor);
+async function loadBuilding(path){
+ if(!buildingImages.has(path))buildingImages.set(path,load(path));
+ try{return await buildingImages.get(path)}
+ catch(error){buildingImages.delete(path);throw error}
+}
+const buildingPromise=loadBuilding(buildingPath);
 const spritesPromise=(async()=>{
  const response=await fetch(spriteManifestUrl);
  if(!response.ok)throw new Error(`Sprite manifest: HTTP ${response.status}`);
@@ -66,7 +79,8 @@ const spritesPromise=(async()=>{
  status.textContent='Character sprites could not load. Refresh to retry.';
  throw error;
 });
-const [initialArt,{manifest,playerSprites},buildingImages]=await Promise.all([artPromise,spritesPromise,buildingPromise]);
+const [initialArt,{manifest,playerSprites},initialBuilding]=await Promise.all([artPromise,spritesPromise,buildingPromise]);
+let buildingImage=initialBuilding;
 let day=initialNight?null:initialArt,night=initialNight?initialArt:null;
 const visitorSprites=new Array(6);
 const foreground=FOREGROUND_POLYGONS.map(spec=>({...spec,...polygonBounds(spec.points)}));
@@ -94,21 +108,29 @@ function prepareForeground(spec){
   throw error;
  }
 }
-let blend=0,blendTarget=0,x=824,y=859,last=0,testAction='normal',actionAt=0,walkVel=0,faceX=0,faceY=1,hanaFacingLeft=false;
-let buildingTier=1;
-function readBuildingSelection(){
+let blend=0,blendTarget=0,x=824,y=859,last=0,testAction='normal',actionAt=0,walkVel=0,faceX=0,faceY=1,hanaFacingLeft=false,lastClickFeedback=-Infinity,lastClickX=0,lastClickY=0;
+async function readBuildingSelection(){
+ const shop=MatchaShop.read();
+ const path=MatchaShop.asset(shop.selected,shop.activeDecor);
+ if(path===buildingPath)return;
+ buildingPath=path;
  try{
-  const shop=JSON.parse(localStorage.getItem('matchaShopState')||'{}');
-  buildingTier=Math.max(1,Math.min(4,Number(shop.tier||1)));
- }catch(error){buildingTier=1;console.warn('Park building selection could not be read.',error)}
+  const image=await loadBuilding(path);
+  if(path===buildingPath)buildingImage=image;
+ }catch(error){
+  if(path===buildingPath){
+   backgroundError='Café artwork could not load. Refresh to retry.';
+   status.textContent=backgroundError;
+  }
+  console.error('Café artwork could not load.',error);
+ }
 }
-readBuildingSelection();
 window.addEventListener('storage',readBuildingSelection);
 window.addEventListener('matcha-shop',readBuildingSelection);
 const hintEl=document.querySelector('#hint');
 const playerMarker=document.querySelector('#player-marker');
 const waveReward=document.querySelector('#wave-reward');
-let clickGoal=null,nearSpot=null,view={cx:0,cy:0,zoom:1};
+let clickGoal=null,nearSpot=null,view={cx:0,cy:0,zoom:1},blockedUntil=0;
 let parkDog=null;
 let animationTime=0;
 let hanaWalkDistance=0;
@@ -151,7 +173,7 @@ function setAction(next){
 const keys=new Set(), touches=new Map();
 const mapping={w:'up',a:'left',s:'down',d:'right',ArrowUp:'up',ArrowLeft:'left',ArrowDown:'down',ArrowRight:'right'};
 onkeydown=e=>{
- if(e.target instanceof Element&&e.target.closest('input,textarea,select,button,summary'))return;
+ if(e.target instanceof Element&&e.target.closest('input,textarea,select,[contenteditable="true"]'))return;
  if(e.key.toLowerCase()==='c'){
   if(!e.repeat)callDog();
   return;
@@ -161,6 +183,7 @@ onkeydown=e=>{
   if(!e.repeat&&nearSpot)nearSpot.go();
   return;
  }
+ if(e.target instanceof Element&&e.target.closest('button,summary'))return;
  const k=mapping[e.key]||mapping[e.key.toLowerCase()];if(k){e.preventDefault();keys.add(k)}
 };
 onkeyup=e=>keys.delete(mapping[e.key]||mapping[e.key.toLowerCase()]);
@@ -186,19 +209,30 @@ window.addEventListener('matcha-pause',()=>localStorage.setItem('matcha-park-pau
 function closestSpot(){
  if(testAction==='wave')return null;
  const landmark=nearestLandmark(x,y);
- let best=landmark&&{...landmark,go:()=>{
-  const position=JSON.stringify({x,y,direction:hanaDirection,facingLeft:hanaFacingLeft});
-  if(landmark.id==='garden'){
-   localStorage.setItem('matcha-garden-return','../park/');
-   localStorage.setItem('matcha-garden-player-position',position);
-  }else localStorage.setItem('matcha-park-pause-position',position);
-  location.href=landmark.href;
- }};
- const bestD=landmark?Math.hypot(landmark.x-x,landmark.y-y):Infinity;
+ let best=null;
+ const cafeNearby=Math.hypot(450-x,590-y)<140;
+ const gardenLandmark=landmark?.id==='garden';
+ const cafeLandmark=landmark?.id==='cafe';
+ if(cafeNearby&&!gardenLandmark){
+  best={id:'cafe',x:450,y:590,r:140,label:'Enter Café',go:()=>{
+   const position=JSON.stringify({x,y,direction:hanaDirection,facingLeft:hanaFacingLeft});
+   localStorage.setItem('matcha-park-pause-position',position);
+   location.href='../menu/';
+  }};
+ }else if(landmark&&(gardenLandmark||cafeLandmark)){
+  best={...landmark,...(gardenLandmark?{x,y:y-25}:{}),go:()=>{
+   const position=JSON.stringify({x,y,direction:hanaDirection,facingLeft:hanaFacingLeft});
+   if(gardenLandmark){
+    localStorage.setItem('matcha-garden-return','../park/');
+    localStorage.setItem('matcha-garden-player-position',position);
+   }else localStorage.setItem('matcha-park-pause-position',position);
+   location.href=landmark.href;
+  }};
+ }
  const pal=visitors.find(person=>person.active&&Math.hypot(person.x-x,person.y-y)<78);
- if(pal){
+ if(pal&&!gardenLandmark&&!cafeNearby){
   const d=Math.hypot(pal.x-x,pal.y-y);
-  if(d<bestD)best={id:'wave-'+pal.guest,x:pal.x,y:pal.y-8,r:78,label:'Wave to '+pal.guest,go:()=>{
+  if(!best||d<Math.hypot(best.x-x,best.y-y))best={id:'wave-'+pal.guest,x:pal.x,y:pal.y-8,r:78,label:'Wave to '+pal.guest,go:()=>{
    if(testAction==='wave')return;
    faceX=pal.x-x;faceY=pal.y-y;waveFacing=facingDirection(faceX,faceY);
    hanaDirection=waveFacing==='left'||waveFacing==='right'?'side':waveFacing;hanaFacingLeft=waveFacing==='left';
@@ -213,7 +247,7 @@ function drawCharacters({cx,cy,cw,ch,w,h,dpr,zoom,travel}){
  }
  characterCtx.setTransform(dpr*zoom,0,0,dpr*zoom,-cx*dpr*zoom,-cy*dpr*zoom);
  characterCtx.clearRect(cx-2,cy-2,cw+4,ch+4);
- if(travel>.35)hanaWalkDistance+=travel;
+ if(travel>0)hanaWalkDistance+=travel;
  else hanaWalkDistance=0;
  const actors=[{x,y,player:true},...visitors.filter(person=>person.visibility>0)].sort((a,b)=>a.y-b.y);
  for(const actor of actors){
@@ -227,7 +261,7 @@ function drawCharacters({cx,cy,cw,ch,w,h,dpr,zoom,travel}){
   const {sheet,image,flipX}=sprite;
   const frame=actor.player
    ?action?spriteFrame(sheet,Math.max(0,animationTime-actionAt))
-    :travel>.35?walkCycleFrame(hanaWalkDistance,sheet.frames,130):sheet.idleFrame
+    :travel>0?walkCycleFrame(hanaWalkDistance,sheet.frames,130):sheet.idleFrame
    :walkCycleFrame(actor.distance,sheet.frames,130);
   const cellWidth=image.width/sheet.columns,cellHeight=image.height/sheet.rows;
   const sourceX=frame%sheet.columns*cellWidth,sourceY=Math.floor(frame/sheet.columns)*cellHeight;
@@ -282,7 +316,14 @@ function worldFromEvent(event){
 canvas.addEventListener('pointerdown',event=>{
  if(event.button)return;
  const point=worldFromEvent(event);
- if(!allowed(point.x,point.y)){status.textContent='Cannot walk there';return}
+ lastClickFeedback=performance.now();
+ lastClickX=point.x;
+ lastClickY=point.y;
+ if(!allowed(point.x,point.y)){
+  clickGoal=null;blockedUntil=performance.now()+1500;
+  status.textContent=nearestLandmark(x,y)?.id==='garden'?'Press E or tap Enter Garden':'Cannot walk there';
+  return;
+ }
  clickGoal={x:point.x,y:point.y,at:performance.now()};
  status.textContent='Walking there';
 });
@@ -310,7 +351,7 @@ function tick(now){
  let len=Math.hypot(dx,dy);const stairs=x>475&&x<737&&y>388&&y<484;
  if(len)clickGoal=null;
  const busy=testAction==='wave';
- const want=busy||!len&&!clickGoal?0:stairs?96:148;
+ const want=busy||!len&&!clickGoal?0:stairs?96:80;
  const ease=want>walkVel?260:340;
  if(walkVel<want)walkVel=Math.min(want,walkVel+ease*dt);
  else walkVel=Math.max(want,walkVel-ease*dt);
@@ -348,14 +389,15 @@ function tick(now){
  }
  stepDog(dt);
  const travel=Math.hypot(x-beforeX,y-beforeY);
+ if(clickGoal&&speed>4&&dt>0&&!travel){clickGoal=null;blockedUntil=now+1500}
  if(clickGoal)status.textContent='Walking there';
- else status.textContent=backgroundError||(len&&!travel&&!busy?'Cannot walk there':stairs?'Stone steps':'');
+ else status.textContent=backgroundError||((len&&!travel&&!busy||now<blockedUntil)?(nearestLandmark(x,y)?.id==='garden'?'Press E or tap Enter Garden':'Cannot walk there'):stairs?'Stone steps':'');
  nearSpot=closestSpot();
  if(hintEl){
   hintEl.hidden=!nearSpot;
   if(nearSpot)hintEl.querySelector('b').textContent='E · '+nearSpot.label;
  }
- const w=canvas.clientWidth,h=canvas.clientHeight,dpr=Math.min(devicePixelRatio,2);
+ const w=canvas.clientWidth,h=canvas.clientHeight,dpr=Math.min(devicePixelRatio,compactForTouch?1.25:2);
  if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr)}
  const zoom=Math.max(w/2048,h/1152),cw=w/zoom,ch=h/zoom;
  const cx=Math.max(0,Math.min(2048-cw,x-cw/2)),cy=Math.max(0,Math.min(1152-ch,y-ch/2));
@@ -396,12 +438,25 @@ function tick(now){
  ctx.setTransform(dpr*zoom,0,0,dpr*zoom,-cx*dpr*zoom,-cy*dpr*zoom);
  ctx.globalAlpha=1;ctx.drawImage(day||night,0,0,2048,1152);
  if(blend>0.001){ctx.globalAlpha=blend;ctx.drawImage(night||day,0,0,2048,1152);ctx.globalAlpha=1}
- const building=buildingImages.get(buildingTier)||buildingImages.get(1);
- if(building){
-  const width=620,height=620;
-   const left=450-(width/2);
-   const top=450-height;
-  ctx.drawImage(building,left,top,width,height);
+ if(buildingImage){
+  const width=720,height=360;
+  const left=450-(width/2);
+  const top=520-height;
+  ctx.globalAlpha=1-blend*0.15;
+  ctx.drawImage(buildingImage,left,top,width,height);
+  if(blend>0.1){
+   ctx.globalAlpha=blend*0.25;
+   const gradient=ctx.createLinearGradient(top,0,top+40,0);
+   gradient.addColorStop(0,'#1a141000');
+   gradient.addColorStop(0.3,'#1a1410');
+   gradient.addColorStop(1,'#1a1410');
+   ctx.fillStyle=gradient;
+   ctx.fillRect(left,top,width,Math.min(40,height));
+   ctx.globalAlpha=blend*0.25;
+   ctx.fillStyle='#1a1410';
+   ctx.fillRect(left,top+40,width,height-40);
+  }
+  ctx.globalAlpha=1;
  }
  if(blend>.02){
   const lamps=[[996,124],[866,927],[1114,821],[632,576],[654,1082]];
@@ -423,6 +478,7 @@ function tick(now){
  ctx.shadowColor='#ffd873';ctx.shadowBlur=7+outlinePulse*7;
  ctx.globalAlpha=.72+outlinePulse*.25;
  for(const landmark of LANDMARKS){
+  if(!landmark.outline)continue;
   ctx.beginPath();
   landmark.outline.forEach(([px,py],index)=>index?ctx.lineTo(px,py):ctx.moveTo(px,py));
   ctx.closePath();ctx.stroke();
@@ -448,10 +504,15 @@ function tick(now){
  }
  if(clickGoal){
   const pulse=0.65+Math.sin(now/180)*0.35;
-  ctx.strokeStyle=`rgba(255,214,90,${0.45+pulse*0.5})`;
+  ctx.strokeStyle=`rgba(120,153,75,0.6)`;
   ctx.lineWidth=4;ctx.beginPath();ctx.ellipse(clickGoal.x,clickGoal.y,34*pulse,16*pulse,0,0,7);ctx.stroke();
-  ctx.fillStyle=`rgba(255,226,122,${0.22+pulse*0.22})`;
+  ctx.fillStyle=`rgba(120,153,75,0.2)`;
   ctx.beginPath();ctx.ellipse(clickGoal.x,clickGoal.y,16,7,0,0,7);ctx.fill();
+ }
+ if(now-lastClickFeedback<300&&lastClickFeedback>=0){
+  const scale=1-(now-lastClickFeedback)/300;
+  ctx.globalAlpha=0.4*scale;ctx.strokeStyle='#78994b';ctx.lineWidth=3;
+  ctx.beginPath();ctx.ellipse(lastClickX,lastClickY,42*scale,21*scale,0,0,7);ctx.stroke();
  }
  if(nearSpot){
   ctx.strokeStyle='#ffe27acc';ctx.lineWidth=2.5;
@@ -488,6 +549,7 @@ function syncTraffic(){
 async function loadRemainingVisitors(){
  try{
   for(const [index,character] of ['01','02','03','04','05','06'].entries()){
+   if(index>=visitors.length)await new Promise(resolve=>setTimeout(resolve,3000));
    visitorSprites[index]=await loadCharacterSprites(manifest,character,true);
    if(index<visitors.length){visitors[index].sprites=visitorSprites[index];syncTraffic()}
   }
@@ -498,7 +560,7 @@ async function loadRemainingVisitors(){
 }
 async function loadOtherArtwork(){
  try{
-  const image=await load(initialNight?'world-day.webp':'world-night.webp');
+  const image=await loadArtwork(initialNight?'world-day.webp':'world-night.webp');
   if(initialNight)day=image;else night=image;
   for(const spec of foreground){
    delete spec.dayLayer;delete spec.nightLayer;delete spec.blendValue;
@@ -738,7 +800,7 @@ try{
    actor.root.visible=true;
    const px=isPlayer?x:person.x,py=isPlayer?y:person.y;
    const busy=isPlayer?testAction==='wave':person.waveUntil&&animationTime<person.waveUntil;
-   const moving=!busy&&(isPlayer?travel>0.35:!!person.moving);
+   const moving=!busy&&(isPlayer?travel>0:!!person.moving);
    const dogWalking=person.goalState==='WALK_DOG'&&Boolean(person.actionUntil)&&animationTime<person.actionUntil;
    const mode=busy?'wave':dogWalking?'walk-dog'
     :moving?(parkDog?.active&&parkDog.owner===person?'walk-dog':'walk'):'idle';

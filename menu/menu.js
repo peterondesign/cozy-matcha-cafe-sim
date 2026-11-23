@@ -1,4 +1,6 @@
 (() => { try {
+import('../shared/asset-preloader.js?v=3').then(m => m.startAssetPreloading()).catch(error => console.error('Game preloader failed.', error));
+
 const toast = document.getElementById('toast');
 const audio = window.MatchaAudio;
 const settings = document.getElementById('settings');
@@ -12,7 +14,7 @@ function paintFooter() {
   const state = MatchaPantry.load();
   document.getElementById('playerName').textContent = audio?.settings.name || 'Player';
   document.getElementById('levelValue').textContent = 'Level ' + Math.floor((Number(state.served) || 0) / 10);
-  const avatar = `layers/avatars/avatar-${audio?.settings.avatar || 1}.png`;
+  const avatar = `layers/avatars/avatar-${audio?.settings.avatar || 1}.png?v=2`;
   document.querySelector('.footer .avatar').src = avatar;
   const accountAvatar = document.getElementById('accountAvatar');
   if (accountAvatar) accountAvatar.src = avatar;
@@ -81,10 +83,11 @@ function restockLink() {
 function paintInventory() {
   const body = document.getElementById('shelfBody');
   const state = MatchaPantry.load();
-  body.innerHTML = `<div class="stock-grid">${MatchaPantry.ITEMS.map(([id, name, cap]) => {
+  body.innerHTML = `<div class="stock-grid">${MatchaPantry.ITEMS.map(([id, name]) => {
     const qty = state.stock[id];
     const low = qty <= MatchaPantry.LOW;
-    return `<article class="stock-card"><img src="${MatchaPantry.icon(id)}" alt=""><div><b>${name}</b><small>${qty} in stock</small><div class="meter${low ? ' low' : ''}"><span style="width:${Math.min(100, Math.round(qty / cap * 100))}%"></span></div></div></article>`;
+    const percent = Math.min(100, Math.round(qty / MatchaPantry.FULL_STOCK * 100));
+    return `<article class="stock-card"><img src="${MatchaPantry.icon(id)}" alt=""><div><b>${name}</b><small>${qty} in stock</small><div class="meter${low ? ' low' : ''}" role="progressbar" aria-label="${name} stock" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" aria-valuetext="${qty} in stock; full at ${MatchaPantry.FULL_STOCK}"><span style="width:${percent}%"></span></div></div></article>`;
   }).join('')}</div>`;
   restockLink().hidden = false;
 }
@@ -96,14 +99,69 @@ function paintLeaderboard() {
   const history = state.statsHistory || {};
   const now = Date.now();
   const servedAt = Array.isArray(history.servedAt) ? history.servedAt : [];
-  const last24 = servedAt.filter(timestamp => now - Number(timestamp) <= 24 * 60 * 60 * 1000).length || Number(history.last24Hours ?? served);
-  const last7 = servedAt.filter(timestamp => now - Number(timestamp) <= 7 * 24 * 60 * 60 * 1000).length || Number(history.last7Days ?? served);
+
+  const last24Hours = servedAt.filter(timestamp => now - Number(timestamp) <= 24 * 60 * 60 * 1000).length || Number(history.last24Hours ?? served);
+  const last7Days = servedAt.filter(timestamp => now - Number(timestamp) <= 7 * 24 * 60 * 60 * 1000).length || Number(history.last7Days ?? served);
+
+  // Sample leaderboard data - in production this would come from a backend
+  const players24h = [
+    { rank: 1, name: 'Matcha Master', served: Math.max(last24Hours, 42), avatar: 2 },
+    { rank: 2, name: 'Café Champion', served: Math.max(last24Hours - 5, 37), avatar: 3 },
+    { rank: 3, name: 'You', served: last24Hours, isYou: true, avatar: audio.settings.avatar },
+    { rank: 4, name: 'Tea Lover', served: Math.max(last24Hours - 15, 27), avatar: 8 },
+    { rank: 5, name: 'Barista Pro', served: Math.max(last24Hours - 20, 22), avatar: 10 }
+  ].sort((a, b) => b.served - a.served).map((p, i) => ({ ...p, rank: i + 1 }));
+
+  const players7d = [
+    { rank: 1, name: 'Matcha Master', served: Math.max(last7Days, 280), avatar: 2 },
+    { rank: 2, name: 'Café Champion', served: Math.max(last7Days - 30, 250), avatar: 3 },
+    { rank: 3, name: 'You', served: last7Days, isYou: true, avatar: audio.settings.avatar },
+    { rank: 4, name: 'Tea Lover', served: Math.max(last7Days - 80, 200), avatar: 8 },
+    { rank: 5, name: 'Barista Pro', served: Math.max(last7Days - 100, 180), avatar: 10 }
+  ].sort((a, b) => b.served - a.served).map((p, i) => ({ ...p, rank: i + 1 }));
+
+  const renderTable = (players) => `
+    <table class="leaderboard-table">
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Name</th>
+          <th>Served</th>
+          <th>Coins</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${players.map(p => `
+          <tr class="${p.isYou ? 'you' : ''}">
+            <td>#${p.rank}</td>
+            <td><span class="leaderboard-player"><img src="layers/avatars/avatar-${p.avatar}.png?v=2" alt="">${p.name}</span></td>
+            <td>${p.served}</td>
+            <td>${(p.served * 12).toLocaleString('en-US')}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
   body.innerHTML = `
-    <div class="leaderboard">
-      <article class="leaderboard-card"><div><span>Last 24 hours</span><strong>${last24}</strong><span>customers served</span></div></article>
-      <article class="leaderboard-card"><div><span>Last 7 days</span><strong>${last7}</strong><span>customers served</span></div></article>
-      <article class="leaderboard-card"><div><span>Coins gained</span><strong>${coinsGained.toLocaleString('en-US')}</strong><span>this café</span></div></article>
-    </div>`;
+    <p class="leaderboard-note">Other players are examples; online rankings are not connected.</p>
+    <div class="leaderboard-tabs">
+      <button class="active" data-tab="24h">Last 24 Hours</button>
+      <button data-tab="7d">Last 7 Days</button>
+    </div>
+    <div data-tab-content="24h">${renderTable(players24h)}</div>
+    <div data-tab-content="7d" hidden>${renderTable(players7d)}</div>
+  `;
+
+  // Add tab switching
+  body.querySelectorAll('.leaderboard-tabs button').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      body.querySelectorAll('.leaderboard-tabs button').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      body.querySelectorAll('[data-tab-content]').forEach(el => el.hidden = true);
+      body.querySelector(`[data-tab-content="${e.target.dataset.tab}"]`).hidden = false;
+    });
+  });
 }
 function openShelf(action) {
   mainMenu.hidden = true;
@@ -228,30 +286,26 @@ document.getElementById('syncCode').addEventListener('keydown', event => {
 });
 function paintAvatarGrid() {
   const grid = document.getElementById('avatarGrid');
-  grid.innerHTML = Array.from({ length: 6 }, (_, i) => {
+  grid.innerHTML = Array.from({ length: 20 }, (_, i) => {
     const number = i + 1;
-    return `<button class="avatar-choice${audio.settings.avatar === number ? ' selected' : ''}" type="button" data-avatar="${number}" aria-label="Avatar ${number}">
-      <img src="layers/avatars/avatar-${number}.png" alt="">
+    return `<button class="avatar-choice${audio.settings.avatar === number ? ' selected' : ''}" type="button" data-avatar="${number}" aria-label="Avatar ${number}" aria-pressed="${audio.settings.avatar === number}">
+      <img src="layers/avatars/avatar-${number}.png?v=2" alt="">
     </button>`;
   }).join('');
   grid.querySelectorAll('[data-avatar]').forEach(button => button.addEventListener('click', () => {
     audio.settings.avatar = Number(button.dataset.avatar);
     audio.saveSettings();
-    paintAvatarGrid();
+    grid.querySelectorAll('[data-avatar]').forEach(choice => {
+      choice.classList.toggle('selected', choice === button);
+      choice.setAttribute('aria-pressed', String(choice === button));
+    });
     paintFooter();
   }));
 }
 
-const SHOP_KEY = 'matchaShopState';
-const shopDefaults = { tier: 1, selected: 'cart', unlocked: ['cart'], decor: [] };
-function readShopState() {
-  try { return { ...shopDefaults, ...JSON.parse(localStorage.getItem(SHOP_KEY) || '{}') }; }
-  catch (error) { return { ...shopDefaults }; }
-}
-function saveShopState(state) {
-  localStorage.setItem(SHOP_KEY, JSON.stringify(state));
-  window.dispatchEvent(new Event('matcha-shop'));
-}
+const SHOP_KEY = MatchaShop.KEY;
+const readShopState = MatchaShop.read;
+const saveShopState = MatchaShop.save;
 function openUpgradeShelf() {
   mainMenu.hidden = true;
   matcha.hidden = true;
@@ -280,18 +334,8 @@ function paintUpgrades(tab = 'shop') {
   body.hidden = false;
   restockLink().hidden = true;
   const shop = readShopState();
-  const structures = [
-    { id: 'cart', name: 'Matcha Canopy Cart', price: 0, tier: 1 },
-    { id: 'stall', name: 'Porch & Awning Stall', price: 120, tier: 2 },
-    { id: 'pavilion', name: 'Deck & Lantern Pavilion', price: 280, tier: 3 },
-    { id: 'kiosk', name: 'Grand Matcha Kiosk', price: 550, tier: 4 }
-  ];
-  const decor = [
-    { id: 'lantern', name: 'Golden Lantern', price: 35 },
-    { id: 'planter', name: 'Sakura Planter', price: 75 },
-    { id: 'seating', name: 'Garden Seating', price: 110 },
-    { id: 'lights', name: 'Festival String Lights', price: 220 }
-  ];
+  const structures = MatchaShop.SIZES;
+  const decor = MatchaShop.DECOR;
   const items = tab === 'shop' ? structures : decor;
   body.innerHTML = `
     <span class="gem-note">✦ ${readBalance().toLocaleString('en-US')} gems</span>
@@ -301,16 +345,17 @@ function paintUpgrades(tab = 'shop') {
     </div>
     <div class="upgrade-grid">${items.map(item => {
       const unlocked = tab === 'shop' ? shop.unlocked.includes(item.id) : shop.decor.includes(item.id);
-      const selected = tab === 'shop' ? shop.selected === item.id : shop.decor.includes(item.id);
+      const selected = tab === 'shop' ? shop.selected === item.id : shop.activeDecor.includes(item.id);
       const stateLabel = selected ? 'Selected' : unlocked ? 'Unlocked' : `✦ ${item.price}`;
-      const preview = tab === 'shop'
-        ? `<img src="layers/shop/building-tier-${item.tier}.png" alt="${item.name} preview">`
-        : `<img src="layers/shop/kiosk-master.png" alt="${item.name} preview">`;
-      return `<button class="upgrade-card${unlocked ? '' : ' locked'}${selected ? ' selected' : ''}" type="button" data-buy="${tab}:${item.id}" data-price="${item.price}">
+      const previewSize = tab === 'shop' ? item.id : shop.selected;
+      const previewDecor = tab === 'shop' ? shop.activeDecor :
+        shop.activeDecor.includes(item.id) ? shop.activeDecor : [...shop.activeDecor, item.id];
+      const preview = `<span class="upgrade-preview" data-size="${previewSize}"><img src="${MatchaShop.asset(previewSize, previewDecor)}" alt="${item.name} preview"></span>`;
+      return `<button class="upgrade-card${unlocked ? '' : ' locked'}${selected ? ' selected' : ''}" type="button" data-buy="${tab}:${item.id}" data-price="${item.price}" aria-pressed="${selected}">
         <span class="state">${stateLabel}</span>
         ${preview}
         <span class="upgrade-name">${item.name}</span>
-        <span class="upgrade-meta">${tab === 'shop' ? `Tier ${item.tier}` : 'Stacking decoration'}</span>
+        <span class="upgrade-meta">${tab === 'shop' ? 'Café size' : 'Tap to toggle'}</span>
       </button>`;
     }).join('')}</div>`;
   body.querySelectorAll('[data-upgrade-tab]').forEach(button => button.addEventListener('click', () => paintUpgrades(button.dataset.upgradeTab)));
@@ -330,7 +375,6 @@ function paintUpgrades(tab = 'shop') {
         state.unlocked.push(id);
       }
       state.selected = id;
-      state.tier = structures.find(item => item.id === id).tier;
       saveShopState(state);
       notify(`${structures.find(item => item.id === id).name} selected`);
       paintUpgrades('shop');
@@ -339,11 +383,14 @@ function paintUpgrades(tab = 'shop') {
     if (!state.decor.includes(id)) {
       if (!spendGems(price)) { notify('Not enough gems.'); return; }
       state.decor.push(id);
-      saveShopState(state);
-      notify('Decoration unlocked');
+      state.activeDecor.push(id);
+      notify('Decoration unlocked and selected');
     } else {
-      notify('Decoration unlocked');
+      const active = state.activeDecor.includes(id);
+      state.activeDecor = active ? state.activeDecor.filter(item => item !== id) : [...state.activeDecor, id];
+      notify(active ? 'Decoration removed' : 'Decoration selected');
     }
+    saveShopState(state);
     paintUpgrades('decor');
   }));
 }

@@ -23,6 +23,7 @@ const MatchaPantry = (() => {
     ['juice', 'Juice', 4, 3]
   ];
   const LOW = 3;
+  const FULL_STOCK = 20;
   const byId = Object.fromEntries(ITEMS.map(item => [item[0], item]));
 
   function read() {
@@ -63,5 +64,5 @@ const MatchaPantry = (() => {
   function icon(id) {
     return location.pathname.includes('/park/') ? `goods/${id}.png` : `../park/goods/${id}.png`;
   }
-  return { ITEMS, LOW, KEY, load, qty, item, consume, buy, icon };
+  return { ITEMS, LOW, FULL_STOCK, KEY, load, qty, item, consume, buy, icon };
 })();

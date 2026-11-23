@@ -50,16 +50,19 @@ export function findViewEntry(path, view, offset = 0) {
   const outside = point => point.x < view.cx - 150 || point.x > view.cx + view.cw + 150 ||
     point.y + offset < view.cy - 150 || point.y + offset > view.cy + view.ch + 150;
   const step = 30, period = path.length * 2;
-  let best = null, bestAhead = Infinity;
-  for (let distance = 0; distance < period; distance += step) {
-    if (!outside(sampleVisitorPath(path, distance))) continue;
-    for (let ahead = step; ahead <= 600 && ahead < bestAhead; ahead += step) {
-      if (inside(sampleVisitorPath(path, distance + ahead))) {
-        best = distance;
+  const count = Math.ceil(period / step), lookahead = 600 / step;
+  const points = Array.from({length: count + lookahead}, (_, index) =>
+    sampleVisitorPath(path, index * step));
+  let best = null, bestAhead = Infinity, nextInside = Infinity;
+  for (let i = points.length - 1; i >= 0; i--) {
+    if (i < count && outside(points[i])) {
+      const ahead = (nextInside - i) * step;
+      if (ahead <= 600 && ahead <= bestAhead) {
+        best = i * step;
         bestAhead = ahead;
-        break;
       }
     }
+    if (inside(points[i])) nextInside = i;
   }
   return best;
 }

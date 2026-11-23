@@ -20,9 +20,11 @@ article:nth-child(-n+2){transform:scale(.88);transform-origin:center bottom}
 .plot-status:empty{display:none}
 [data-state=ready] .plot-status{background:#789742}
 .growth{display:flex;align-items:center;gap:5px;width:min(150px,80%);padding:4px 8px;border:2px solid #bba475;border-radius:20px;background:#fff2d6e8;box-shadow:0 2px 4px #4e3e2855}
-.growth input{appearance:none;min-width:0;flex:1;height:8px;margin:0;border:1px solid #b3ad82;border-radius:99px;background:linear-gradient(to right,#89a74c 0 var(--progress,0%),#dfd5ad var(--progress,0%) 100%);cursor:pointer}
-.growth input::-webkit-slider-thumb{appearance:none;width:14px;height:14px;border:2px solid #fff9dc;border-radius:50%;background:#7c9a45;box-shadow:0 1px 3px #4c553b80}
-.growth input::-moz-range-thumb{width:11px;height:11px;border:2px solid #fff9dc;border-radius:50%;background:#7c9a45;box-shadow:0 1px 3px #4c553b80}
+.growth input{appearance:none;min-width:0;flex:1;height:8px;margin:0;border:1px solid #b3ad82;border-radius:99px;background:linear-gradient(to right,#89a74c 0 var(--progress,0%),#dfd5ad var(--progress,0%) 100%);cursor:default;pointer-events:none}
+.growth input::-webkit-slider-thumb{appearance:none;width:14px;height:14px;border:2px solid #fff9dc;border-radius:50%;background:#7c9a45;box-shadow:0 1px 3px #4c553b80;animation:progress-pulse 2s ease-in-out infinite}
+.growth input::-moz-range-thumb{width:11px;height:11px;border:2px solid #fff9dc;border-radius:50%;background:#7c9a45;box-shadow:0 1px 3px #4c553b80;animation:progress-pulse 2s ease-in-out infinite}
+@keyframes progress-pulse{0%,100%{transform:scale(1);box-shadow:0 1px 3px #4c553b80}50%{transform:scale(1.3);box-shadow:0 1px 8px #7c9a4580,inset 0 0 4px #fff9dc}}
+@media(prefers-reduced-motion:reduce){.progress-pulse{animation:none}}
 .percent{min-width:31px;color:#536638;font:700 11px system-ui}
 .care-panel{position:fixed;right:12px;bottom:70px;z-index:7;display:flex;align-items:center;gap:10px;width:min(440px,calc(100% - 24px));padding:6px;border:24px solid transparent;border-image:url('../menu/layers/ui/panel.png') 160 fill / 24px / 0 stretch;filter:drop-shadow(0 5px 12px #362a1d66)}
 .care-panel[hidden]{display:none}

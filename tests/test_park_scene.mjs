@@ -6,6 +6,33 @@ import {CELL_REGISTRY,cellAt,isWalkableCell,nearestLandmark,routeCells} from '..
 import {VISITOR_PATHS,sampleVisitorPath,visitorTarget,findViewEntry} from '../park/visitor-paths.js';
 import {FOREGROUND_POLYGONS,occludesActor,polygonBounds} from '../park/scene-occlusion.js';
 
+test('visitor entry search preserves the closest forward entry for different views',()=>{
+  function reference(path, view, offset) {
+    const inside = p => p.x >= view.cx && p.x <= view.cx + view.cw &&
+      p.y + offset >= view.cy && p.y + offset <= view.cy + view.ch;
+    const outside = p => p.x < view.cx - 150 || p.x > view.cx + view.cw + 150 ||
+      p.y + offset < view.cy - 150 || p.y + offset > view.cy + view.ch + 150;
+    let best = null, bestAhead = Infinity;
+    for (let distance = 0; distance < path.length * 2; distance += 30) {
+      if (!outside(sampleVisitorPath(path, distance))) continue;
+      for (let ahead = 30; ahead <= 600 && ahead < bestAhead; ahead += 30) {
+        if (inside(sampleVisitorPath(path, distance + ahead))) {
+          best = distance; bestAhead = ahead; break;
+        }
+      }
+    }
+    return best;
+  }
+  for (const path of VISITOR_PATHS) {
+    for (const view of [{cx:0,cy:0,cw:400,ch:300},{cx:400,cy:500,cw:700,ch:500},
+      {cx:1400,cy:250,cw:500,ch:500},{cx:5000,cy:5000,cw:100,ch:100}]) {
+      for (const offset of [0, 40]) {
+        assert.equal(findViewEntry(path, view, offset), reference(path, view, offset));
+      }
+    }
+  }
+});
+
 test('park cells register movement surfaces, anchors, exits, and colliders',()=>{
   assert.equal(CELL_REGISTRY.entrance.type,'entrance');
   assert.equal(CELL_REGISTRY['north-exit'].type,'exit');
@@ -48,6 +75,16 @@ test('foreground objects occlude only overlapping actors behind their sort line'
   assert.equal(occludesActor(spec,{x:1850,y:500},bounds),true);
   assert.equal(occludesActor(spec,{x:1850,y:560},bounds),false);
   assert.equal(occludesActor(spec,{x:1700,y:400},{left:200,right:300,top:250,bottom:400}),false);
+  const fence=FOREGROUND_POLYGONS.find(item=>item.id==='east-fence');
+  const east={...fence,...polygonBounds(fence.points)};
+  const fenceBounds={left:1730,right:1800,top:760,bottom:900};
+  assert.equal(occludesActor(east,{x:1765,y:840},fenceBounds),true);
+  assert.equal(occludesActor(east,{x:1765,y:898},fenceBounds),false);
+  const garden=FOREGROUND_POLYGONS.find(item=>item.id==='garden-fence-front');
+  const front={...garden,...polygonBounds(garden.points)};
+  const gardenBounds={left:220,right:280,top:780,bottom:930};
+  assert.equal(occludesActor(front,{x:250,y:860},gardenBounds),true);
+  assert.equal(occludesActor(front,{x:250,y:920},gardenBounds),false);
 });
 
 test('garden and grocer interactions are reachable from their entrances',()=>{
@@ -56,6 +93,24 @@ test('garden and grocer interactions are reachable from their entrances',()=>{
   assert.equal(nearestLandmark(1200,700),null);
   assert.equal(isWalkableCell(700,905),true);
   assert.equal(isWalkableCell(1805,560),true);
+});
+
+test('garden interaction covers reachable sides of the garden without extending across the park',()=>{
+  for(const [x,y] of [[700,905],[750,680],[650,575],[400,505],[430,990],[250,950]]){
+    assert.equal(isWalkableCell(x,y),true);
+    assert.equal(nearestLandmark(x,y)?.id,'garden',`No garden interaction at ${x},${y}`);
+  }
+  assert.equal(nearestLandmark(800,650),null);
+  assert.equal(nearestLandmark(1805,560)?.id,'grocer');
+});
+
+test('pond and rocks are blocked while the bridge and path remain walkable',()=>{
+  for(const [x,y] of [[1954,984],[2000,950],[1850,1120],[1590,1100]]){
+    assert.equal(isWalkableCell(x,y),false,`Water accessible at ${x},${y}`);
+  }
+  for(const [x,y] of [[1850,1010],[1890,1030],[1982,1108],[1765,898]]){
+    assert.equal(isWalkableCell(x,y),true,`Bridge or path blocked at ${x},${y}`);
+  }
 });
 
 test('declared entrances route to exits and activity cells',()=>{

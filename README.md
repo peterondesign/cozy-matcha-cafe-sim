@@ -21,6 +21,12 @@ python3 -m http.server 8765
 
 Then open <http://127.0.0.1:8765/>.
 
+On the first menu visit, the loading screen caches major park, garden, counter,
+and grocer assets in browser Cache Storage. Later visits reuse them when browser
+storage is available; clearing site data removes the cache. You can continue
+without waiting, and a failed download can be retried by refreshing. A secure
+context (HTTPS or localhost) is required for persistent caching.
+
 ## Launch on Vercel
 
 This is a static site. There is no build step.
@@ -56,6 +62,15 @@ shows the same stock used by the counter, and harvests animate into it.
 The music button in the shared HUD works throughout the game and remembers
 your preference. Browsers may require a click or keypress before music can
 start. In the grocer, open the basket for the shopping list or inventory.
+
+The inventory meter is full at 20 units; purchases and harvests can still
+increase stock beyond 20. The Building menu lets you choose a small, medium or
+large café and independently toggle unlocked seating, lighting and greenery.
+Existing building and decoration purchases carry over to the closest new option.
+The park displays the selected combination. The supplied artwork has no
+lighting-only sheet, so that variant adds lights to the plain café.
+To regenerate the cutouts from the supplied sheets, run
+`python3 menu/build-cafe-assets.py` (requires Pillow, NumPy and SciPy).
 
 The [park sprite protocol](park/ARCHITECTURE.md#sprite-authoring-protocol)
 describes the character sheets, scene-specific action views, and preview.

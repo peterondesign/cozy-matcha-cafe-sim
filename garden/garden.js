@@ -71,7 +71,7 @@
     article.innerHTML=`<button class="plot" type="button" aria-label="View ${crop.name}" aria-pressed="false">
       <span class="plot-name">${crop.name}</span><img class="plant-art" src="assets/bed-${crop.id}.png" alt="">
       <span class="plot-status"></span></button>
-      <div class="growth"><span class="sr-only">Growth </span><input type="range" min="0" max="100" step="1" aria-label="${crop.name} growth progress"><span class="percent"></span></div>`;
+      <div class="growth"><span class="sr-only">Growth </span><input type="range" min="0" max="100" step="1" aria-label="${crop.name} growth progress" disabled><span class="percent"></span></div>`;
     document.querySelector('#beds').append(article);
     const q=s=>article.querySelector(s);
     const ui={article, image:q('.plant-art'), plot:q('.plot'), status:q('.plot-status'), percent:q('.percent'),progress:q('input')};
@@ -82,12 +82,6 @@
         panel.hidden=true;
         ui.plot.setAttribute('aria-pressed','false');
       } else select(crop);
-    });
-    ui.progress.addEventListener('input',()=>{
-      const percent=Number(ui.progress.value);
-      select(crop);
-      ui.progress.style.setProperty('--progress',percent+'%');
-      change(state=>Garden.seek(state[slot][crop.id],percent,gardenNow()));
     });
   }
   function select(crop) {

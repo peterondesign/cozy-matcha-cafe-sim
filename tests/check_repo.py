@@ -7,6 +7,7 @@ Usage:
 from html.parser import HTMLParser
 import os
 import re
+import struct
 import subprocess
 import sys
 from urllib.parse import urlsplit
@@ -45,6 +46,22 @@ with open(os.path.join(ROOT, "shared", "pantry.js"), encoding="utf-8") as source
 for item_id in pantry_ids:
     if not os.path.isfile(os.path.join(ROOT, "park", "goods", "models", f"{item_id}.glb")):
         errors.append(f"park/goods/models/{item_id}.glb: missing grocer model")
+
+for index in range(1, 21):
+    path = os.path.join(ROOT, "menu", "layers", "avatars", f"avatar-{index}.png")
+    try:
+        with open(path, "rb") as avatar:
+            header = avatar.read(24)
+        if header[:8] != b"\x89PNG\r\n\x1a\n" or struct.unpack(">II", header[16:24]) != (260, 260):
+            errors.append(f"avatar-{index}.png: expected a 260x260 PNG")
+    except (OSError, struct.error):
+        errors.append(f"avatar-{index}.png: missing or invalid avatar")
+
+with open(os.path.join(ROOT, "shared", "asset-preloader.js"), encoding="utf-8") as source:
+    preloader = source.read()
+for relative_path in re.findall(r"'((?:park|garden|counter|menu)/[^']+\.(?:png|webp))'", preloader):
+    if not os.path.isfile(os.path.join(ROOT, relative_path)):
+        errors.append(f"asset-preloader.js: missing {relative_path}")
 
 for current, dirs, names in os.walk(ROOT):
     dirs[:] = [name for name in dirs if name not in (".git", "node_modules")]

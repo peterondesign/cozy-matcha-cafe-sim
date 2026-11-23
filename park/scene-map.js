@@ -37,6 +37,8 @@ const cells = [
   {id:'blocked-garden',type:'blocked',polygon:[[0,630],[190,548],[345,570],[590,650],[640,705],[680,780],[710,805],[710,855],[675,875],[645,935],[300,875],[0,790]]},
   {id:'blocked-shop',type:'blocked',polygon:[[1640,350],[1680,340],[1900,376],[2048,280],[2048,500],[1900,565],[1660,470]]},
   {id:'blocked-water-west',type:'blocked',polygon:[[1500,1120],[1675,1040],[1750,1065],[1680,1152],[1500,1152]]},
+  {id:'blocked-water-north',type:'blocked',polygon:[[1810,960],[1840,940],[1880,915],[1920,897],[1960,885],[2010,878],[2048,875],[2048,1003],[1990,999],[1950,990],[1910,966],[1870,953],[1840,950]]},
+  {id:'blocked-water-south',type:'blocked',polygon:[[1675,1105],[1750,1065],[1810,1070],[1870,1095],[1905,1110],[1905,1152],[1675,1152]]},
   {id:'blocked-water-east',type:'blocked',polygon:[[1960,980],[2048,950],[2048,1060],[1980,1090]]},
   {id:'blocked-east-fence',type:'blocked',polygon:[[1588,962],[1600,970],[1800,832],[1790,820]]},
   {id:'blocked-lamp-north',type:'blocked',x:980,y:220,radius:16},
@@ -50,17 +52,32 @@ export const CELL_REGISTRY = Object.freeze(Object.fromEntries(
 ));
 
 export const LANDMARKS = [
-  {id:'garden',x:700,y:905,r:135,label:'Enter Garden',href:'../garden/',
+  {id:'garden',x:700,y:905,r:135,perimeterRadius:110,label:'Enter Garden',href:'../garden/',
    outline:[[0,600],[190,540],[345,565],[600,640],[640,705],[680,780],[710,805],[710,855],[675,875],[645,935],[490,925],[0,805]]},
   {id:'grocer',x:1805,y:565,r:125,label:'Village Grocer',href:'../grocer/',
-   outline:[[1648,280],[1805,165],[1810,158],[1840,163],[1980,215],[2048,245],[2048,500],[1900,565],[1660,470],[1650,350],[1620,335],[1620,315],[1648,305]]}
+   outline:[[1648,280],[1805,165],[1810,158],[1840,163],[1980,215],[2048,245],[2048,500],[1900,565],[1660,470],[1650,350],[1620,335],[1620,315],[1648,305]]},
+  {id:'cafe',x:450,y:590,r:140}
 ];
 
 export function nearestLandmark(x,y) {
   let nearest=null,distance=Infinity;
   for(const landmark of LANDMARKS){
-    const d=Math.hypot(landmark.x-x,landmark.y-y);
-    if(d<landmark.r&&d<distance){nearest=landmark;distance=d}
+    const d=landmark.perimeterRadius
+      ? distanceToPolygon(landmark.outline,x,y)
+      : Math.hypot(landmark.x-x,landmark.y-y);
+    if(d<(landmark.perimeterRadius||landmark.r)&&d<distance){nearest=landmark;distance=d}
+  }
+  return nearest;
+}
+
+function distanceToPolygon(points,x,y) {
+  if(containsPolygon(points,x,y))return 0;
+  let nearest=Infinity;
+  for(let i=0,j=points.length-1;i<points.length;j=i++){
+    const [ax,ay]=points[j], [bx,by]=points[i];
+    const dx=bx-ax,dy=by-ay,length=dx*dx+dy*dy;
+    const t=length?Math.max(0,Math.min(1,((x-ax)*dx+(y-ay)*dy)/length)):0;
+    nearest=Math.min(nearest,Math.hypot(x-ax-t*dx,y-ay-t*dy));
   }
   return nearest;
 }
