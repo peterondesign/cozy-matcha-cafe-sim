@@ -1,4 +1,5 @@
 import {CELL_REGISTRY,cellAt,nearestNavigationCell,routeCells,isWalkableCell} from './scene-map.js';
+import {loadParkAssets} from './gltf-pipeline.js';
 
 const canvas=document.querySelector('#park'), ctx=canvas.getContext('2d');
 const figureCanvas=document.querySelector('#figures');
@@ -91,7 +92,10 @@ function clearOf(a,b,self,pad=32){
  if(!self)return true;
  for(const person of visitors){
   if(person===self||!person.active)continue;
-  if(Math.hypot(person.x-a,person.y-b)<pad)return false;
+  const nextDistance=Math.hypot(person.x-a,person.y-b);
+  if(nextDistance>=pad)continue;
+  const currentDistance=Math.hypot(person.x-self.x,person.y-self.y);
+  if(nextDistance<=currentDistance+0.001)return false;
  }
  return true;
 }
@@ -162,7 +166,24 @@ function tick(now){
    else continue;
   }
   if(person.actionUntil){
-   if(animationTime<person.actionUntil){person.vx=0;person.vy=0;person.moving=false;continue}
+   if(animationTime<person.actionUntil){
+    if(person.goalState==='WALK_DOG'){
+     person.dogWalkAngle+=dt*.75*person.dogWalkDirection;
+     const radius=30,center=person.dogWalkCenter;
+     const targetX=center.x+Math.cos(person.dogWalkAngle)*radius;
+     const targetY=center.y+Math.sin(person.dogWalkAngle)*radius;
+     const dx=targetX-person.x,dy=targetY-person.y,distance=Math.hypot(dx,dy)||1;
+     const step=Math.min(stroll*dt,distance),nx=person.x+dx/distance*step,ny=person.y+dy/distance*step;
+     if(allowed(nx,ny)&&clearOf(nx,ny,person,36)){
+      person.x=nx;person.y=ny;person.vx=dx/distance;person.vy=dy/distance;person.moving=true;
+     }else{
+      person.dogWalkDirection*=-1;person.moving=false;person.vx=0;person.vy=0;
+     }
+    }else{
+     person.vx=0;person.vy=0;person.moving=false;
+    }
+    continue;
+   }
    finishVisitorAction(person);
   }
   const goal=person.route[person.at];
@@ -193,7 +214,17 @@ function tick(now){
   for(const other of visitors){
    if(other===person||!other.active)continue;
    const sx=person.x-other.x,sy=person.y-other.y,sd=Math.hypot(sx,sy);
-   if(sd>0&&sd<54){const force=(54-sd)/54;separateX+=sx/sd*force;separateY+=sy/sd*force}
+   if(sd<54){
+    if(sd>0.001){
+     const force=(54-sd)/54;
+     separateX+=sx/sd*force;separateY+=sy/sd*force;
+    }else{
+     const low=Math.min(person.id,other.id),high=Math.max(person.id,other.id);
+     const angle=(low*31+high*17)*2.399963;
+     const direction=person.id<other.id?-1:1;
+     separateX+=Math.cos(angle)*direction;separateY+=Math.sin(angle)*direction;
+    }
+   }
   }
   const steeringX=ux+separateX*1.35,steeringY=uy+separateY*1.35,steeringLength=Math.hypot(steeringX,steeringY)||1;
   ux=steeringX/steeringLength;uy=steeringY/steeringLength;
@@ -207,7 +238,7 @@ function tick(now){
   let moved=false;
   for(const [cx,cy] of candidates){
    const length=Math.hypot(cx,cy)||1,nx=person.x+cx/length*step,ny=person.y+cy/length*step;
-   if(allowed(nx,ny)&&clearOf(nx,ny,person,26)){
+   if(allowed(nx,ny)&&clearOf(nx,ny,person,36)){
     person.x=nx;person.y=ny;person.vx=cx/length;person.vy=cy/length;person.moving=true;person.stuck=0;moved=true;break;
    }
   }
@@ -215,9 +246,11 @@ function tick(now){
    person.stuck=(person.stuck||0)+dt;
    person.vx=0;person.vy=0;person.moving=false;
    if(person.stuck>.45){
-    const nudge=person.stuck>.9?Math.min(step*3,24):Math.min(step*1.5,12);
+    const nudge=person.stuck>.9?Math.min(step*3,30):Math.min(step*1.5,16);
     const nx=person.x-uy*nudge*side,ny=person.y+ux*nudge*side;
-    if(allowed(nx,ny)&&clearOf(nx,ny,person,24)){person.x=nx;person.y=ny;person.vx=-uy*side;person.vy=ux*side;person.moving=true}
+    if(allowed(nx,ny)&&clearOf(nx,ny,person,36)){
+     person.x=nx;person.y=ny;person.vx=-uy*side;person.vy=ux*side;person.moving=true;person.stuck=0;
+    }
     if(person.stuck>1.2){routeVisitorAroundObstacle(person);person.stuck=0}
    }
   }
@@ -351,7 +384,7 @@ function assignVisitorGoal(person){
 function respawnVisitor(person){
  const entrance=CELL_REGISTRY.entrance;
  person.active=true;person.spawnCount++;
- person.x=entrance.x+(person.id%3-1)*12;person.y=entrance.y;
+ person.x=entrance.x+(person.id-3)*20;person.y=entrance.y;
  person.vx=0;person.vy=0;person.moving=false;person.stuck=0;
  person.actionUntil=0;person.restUntil=0;person.waveUntil=0;
  if(!person.transit)person.actionCycle++;
@@ -369,7 +402,12 @@ function beginVisitorAction(person,now){
  person.facingYaw=CELL_REGISTRY[person.targetCellId].yaw||0;
  if(person.goalState==='SIT_BENCH'||person.goalState==='SIT_MAT')person.restUntil=person.actionUntil;
  if(person.goalState==='WAVE')person.waveUntil=person.actionUntil;
- if(person.goalState==='WALK_DOG')callDog(person);
+ if(person.goalState==='WALK_DOG'){
+  person.dogWalkCenter={x:person.x,y:person.y};
+  person.dogWalkAngle=0;
+  person.dogWalkDirection=person.id%2?1:-1;
+  callDog(person);
+ }
 }
 function routeVisitorAroundObstacle(person){
  if(!person.targetCellId)return;
@@ -418,7 +456,10 @@ for(const [id,person] of visitors.entries()){
 }
 window.MatchaParkScene=Object.freeze({
  cells:CELL_REGISTRY,cellAt,routeCells,lighting:()=>blend,
- visitors:()=>visitors.map(person=>({guest:person.guest,transit:person.transit,goal:person.goalState,active:person.active})),
+ visitors:()=>visitors.map(person=>({
+  guest:person.guest,transit:person.transit,goal:person.goalState,active:person.active,
+  x:person.x,y:person.y,moving:person.moving,stuck:person.stuck
+ })),
  dogState:()=>parkDog&&{active:parkDog.active,x:parkDog.x,y:parkDog.y,owner:parkDog.owner.guest||'player'}
 });
 const T=globalThis.MatchaThree;
@@ -426,25 +467,101 @@ if(!T)throw new Error('The park 3D renderer could not load.');
 const player={player:true,customer:'10'};
 let renderer,scene,camera,actors=[],drawFigures=()=>{};
 try{
- const customerIds=[...new Set([player,...visitors].map(person=>person.customer))];
- const frames=new Map();
- await Promise.all(customerIds.flatMap(customer=>[1,2,3,4,5,6].map(async frame=>{
-  const file=`../counter/customers/${customer}/frame_${String(frame).padStart(2,'0')}.png`;
-  const image=new Image();
-  image.src=file;
-  await image.decode();
-  const texture=new T.CanvasTexture(image);
-  texture.needsUpdate=true;
-  texture.colorSpace=T.SRGBColorSpace||T.sRGBEncoding;
-  frames.set(`${customer}:${frame}`,texture);
- })));
+ const assets=await loadParkAssets(T);
  renderer=new T.WebGLRenderer({canvas:figureCanvas,alpha:true,antialias:true,powerPreference:'high-performance'});
  renderer.setClearColor(0x000000,0);
  renderer.outputColorSpace=T.SRGBColorSpace||T.sRGBEncoding;
  scene=new T.Scene();
  camera=new T.OrthographicCamera(0,1,1,0,.1,1200);
  camera.position.set(0,0,500);camera.lookAt(0,0,0);
- const geometry=new T.PlaneGeometry(1,1);
+ const ambient=new T.HemisphereLight(0xfff0d7,0x697258,.85);
+ const sunlight=new T.DirectionalLight(0xffe6be,1.25);
+ sunlight.position.set(-180,300,420);
+ scene.add(ambient,sunlight);
+ const axes={x:new T.Vector3(1,0,0),y:new T.Vector3(0,1,0),z:new T.Vector3(0,0,1)};
+ function childBones(bone){return bone.children.filter(child=>child.isBone)}
+ function descendantCount(bone){return childBones(bone).reduce((count,child)=>count+1+descendantCount(child),0)}
+ function mainChild(bone){return childBones(bone).sort((a,b)=>descendantCount(b)-descendantCount(a))[0]||null}
+ function rigControls(rig){
+  const root=rig.nodesByName.get('bone_0');
+  if(!root)throw new Error('Local park rig has no articulated root bone.');
+  const children=childBones(root);
+  rig.root.updateMatrixWorld(true);
+  const rootPosition=root.getWorldPosition(new T.Vector3());
+  const spine=children.find(bone=>{
+   const position=bone.getWorldPosition(new T.Vector3());
+   return Math.abs(position.x-rootPosition.x)<.035&&position.y>rootPosition.y+.035;
+  });
+  if(!spine)throw new Error('Local park rig has no spine chain.');
+  const spineMid=mainChild(spine),chest=spineMid&&mainChild(spineMid);
+  if(!chest)throw new Error('Local park rig has no chest bone.');
+  const arms=childBones(chest).filter(bone=>Math.abs(bone.position.x)>.02)
+   .sort((a,b)=>a.position.x-b.position.x)
+   .map(shoulder=>({side:Math.sign(shoulder.position.x),shoulder,upper:mainChild(shoulder),forearm:mainChild(mainChild(shoulder))}));
+  const legs=children.filter(bone=>bone!==spine)
+   .sort((a,b)=>a.position.x-b.position.x)
+   .map(hip=>({side:Math.sign(hip.position.x),hip,knee:mainChild(hip),ankle:mainChild(mainChild(hip))}));
+  return {root,spine,chest,arms,legs};
+ }
+ function applyPose(actor,mode,time,dt){
+  const rotations=new Map(),positions=new Map(),controls=actor.controls;
+  const rotate=(bone,axis,angle)=>{if(bone&&angle)rotations.set(bone,{axis:axes[axis],angle})};
+  const stride=Math.sin(time*Math.PI*2/880);
+  if(mode==='walk'||mode==='walk-dog'){
+   controls.legs.forEach(({hip,knee,ankle,side})=>{
+    const swing=stride*(side||1);
+    rotate(hip,'x',swing*.34);
+    rotate(knee,'x',Math.max(0,-swing)*.48);
+    rotate(ankle,'x',Math.max(0,swing)*.16);
+   });
+   controls.arms.forEach(({shoulder,upper,forearm,side})=>{
+    const swing=-stride*(side||1)*.24;
+    rotate(shoulder,'x',swing);
+    rotate(upper,'z',(side||1)*.1);
+    rotate(forearm,'x',-.18);
+   });
+   positions.set(controls.root,{x:actor.rest.get(controls.root).position.x,y:actor.rest.get(controls.root).position.y+Math.abs(Math.sin(time*Math.PI*4/880))*.009,z:actor.rest.get(controls.root).position.z});
+  }else if(mode==='sit-bench'||mode==='sit-mat'||mode==='stretch-mat'){
+   controls.legs.forEach(({hip,knee,ankle,side})=>{
+    const matMode=mode!=='sit-bench';
+    rotate(hip,'x',matMode?-1.28:-1.02);
+    rotate(hip,'z',matMode?(side||1)*.48:0);
+    rotate(knee,'x',matMode?2.16:1.42);
+    rotate(ankle,'x',matMode?-.55:-.18);
+   });
+   controls.arms.forEach(({shoulder,upper,forearm,side})=>{
+    rotate(shoulder,'x',-.12);
+    rotate(upper,'z',(side||1)*.16);
+    rotate(forearm,'x',-.32);
+   });
+  }else if(mode==='wave'){
+   const wave=Math.sin(time*15)*.22;
+   controls.arms.forEach(({shoulder,upper,forearm,side})=>{
+    if(side>0){rotate(shoulder,'z',1.25);rotate(upper,'x',-.18);rotate(forearm,'x',-.85+wave)}
+    else{rotate(shoulder,'z',-.08);rotate(forearm,'x',-.12)}
+   });
+  }else{
+   const breath=Math.sin(time*1.8);
+   rotate(controls.chest,'x',breath*.025);
+   controls.arms.forEach(({shoulder,forearm,side})=>{
+    rotate(shoulder,'z',(side||1)*(.08+breath*.025));
+    rotate(forearm,'x',-.12);
+   });
+   positions.set(controls.root,{x:actor.rest.get(controls.root).position.x,y:actor.rest.get(controls.root).position.y+breath*.004,z:actor.rest.get(controls.root).position.z});
+  }
+  const blend=1-Math.exp(-dt*10);
+  for(const bone of actor.bones){
+   const rest=actor.rest.get(bone),turn=rotations.get(bone);
+   const target=rest.quaternion.clone();
+   if(turn){
+    const delta=bone.quaternion.clone().setFromAxisAngle(turn.axis,turn.angle);
+    target.multiply(delta);
+   }
+   bone.quaternion.slerp(target,blend).normalize();
+   const position=positions.get(bone)||rest.position;
+   bone.position.lerp(position,blend);
+  }
+ }
  const dogGroup=new T.Group(),dogSphere=new T.SphereGeometry(1,12,8);
  const dogMaterials={
   coat:new T.MeshBasicMaterial({color:0xb9845c}),cream:new T.MeshBasicMaterial({color:0xf0d4a9}),
@@ -473,16 +590,14 @@ try{
  leashGeometry.setIndex(new T.Uint16BufferAttribute([0,1,2,2,1,3,2,3,4,4,3,5],1));
  const leash=new T.Mesh(leashGeometry,new T.MeshBasicMaterial({color:0x745a3d,transparent:true,opacity:.9,depthWrite:false,side:T.DoubleSide}));
  leash.frustumCulled=false;leash.visible=false;scene.add(leash);
- function drawDog(now){
+ function drawDog(){
   if(!parkDog?.active){dogGroup.visible=false;leash.visible=false;return}
   const owner=parkDog.owner,ownerX=owner.player?x:owner.x,ownerY=owner.player?y:owner.y;
   const facing=dogOwnerDirection(owner),dogYaw=parkDog.heading||0;
   dogGroup.visible=true;leash.visible=true;
-  dogGroup.position.set(parkDog.x,1152-parkDog.y+10,4);
+  dogGroup.position.set(parkDog.x,1152-parkDog.y+10,parkDog.y*.08+20);
   dogGroup.rotation.z=parkDog.heading||0;
-  dogGroup.renderOrder=Math.round(parkDog.y);
-  dogGroup.children.forEach(part=>part.renderOrder=Math.round(parkDog.y));
-  dogTail.rotation.z=Math.sin(now*.012)*.38;
+  dogTail.rotation.z=Math.sin(animationTime*.012)*.38;
   dogLegs.forEach((leg,index)=>{leg.rotation.z=Math.sin(animationTime*.018+(index%2)*Math.PI)*.18});
   const handX=ownerX+facing.x*12-facing.y*7,handY=1152-ownerY+62;
   const collarX=parkDog.x+Math.cos(dogYaw)*8,collarY=1152-parkDog.y+10+Math.sin(dogYaw)*8;
@@ -492,84 +607,100 @@ try{
    const before=centers[Math.max(0,i-1)],after=centers[Math.min(centers.length-1,i+1)];
    const dx=after[0]-before[0],dy=after[1]-before[1],length=Math.hypot(dx,dy)||1;
    const ox=-dy/length*1.25,oy=dx/length*1.25;
-   points.setXYZ(i*2,centers[i][0]+ox,centers[i][1]+oy,5);
-   points.setXYZ(i*2+1,centers[i][0]-ox,centers[i][1]-oy,5);
+   const z=((ownerY+parkDog.y)/2)*.08+15;
+   points.setXYZ(i*2,centers[i][0]+ox,centers[i][1]+oy,z);
+   points.setXYZ(i*2+1,centers[i][0]-ox,centers[i][1]-oy,z);
   }
   points.needsUpdate=true;leash.geometry.computeBoundingSphere();
-  leash.renderOrder=Math.round(ownerY)+1;
  }
  function addActor(who){
-  const initialTexture=frames.get(`${who.customer}:1`);
-  const material=new T.MeshBasicMaterial({map:initialTexture,transparent:true,alphaTest:.02,depthWrite:false,side:T.DoubleSide});
-  const model=new T.Mesh(geometry,material);
-  model.frustumCulled=false;
-  scene.add(model);
-  const actor={who,model,material,frame:1};
+  const modelId=who.player?'barista':['Hana','Yuki','Mio'].includes(who.guest)?'hiker':'walker';
+  const rig=assets.models[modelId].createInstance();
+  const bones=rig.skinMeshes[0].skeleton.bones;
+  const root=new T.Group();
+  root.add(rig.root);
+  const displays=rig.skinMeshes.map(source=>{
+   source.visible=false;
+   const geometry=source.geometry.clone();
+   const position=new T.Float32BufferAttribute(new Float32Array(geometry.attributes.position.count*3),3);
+   geometry.setAttribute('position',position);
+   const mesh=new T.Mesh(geometry,new T.MeshBasicMaterial({
+    map:source.material.map,side:T.DoubleSide,transparent:source.material.transparent,
+    opacity:source.material.opacity,alphaTest:source.material.alphaTest
+   }));
+   mesh.frustumCulled=false;
+   root.add(mesh);
+   return {source,mesh,position};
+  });
+  scene.add(root);
+  const actor={
+   who,root,rigRoot:rig.root,nodes:rig.nodesByName,bones,displays,rig,
+   controls:rigControls(rig),rest:new Map(bones.map(bone=>[bone,{position:bone.position.clone(),quaternion:bone.quaternion.clone()}])),
+   modelId
+  };
   actors.push(actor);
  }
  addActor(player);
  visitors.forEach(addActor);
  let rendererDpr=0,rendererWidth=0,rendererHeight=0;
- drawFigures=({cx,cy,cw,ch,w,h,dpr,blend:dim,travel,now,dt})=>{
+ drawFigures=({cx,cy,cw,ch,w,h,dpr,blend:dim,travel,dt})=>{
   if(rendererDpr!==dpr||rendererWidth!==w||rendererHeight!==h){
    renderer.setPixelRatio(dpr);renderer.setSize(w,h,false);
    rendererDpr=dpr;rendererWidth=w;rendererHeight=h;
   }
   camera.left=cx;camera.right=cx+cw;camera.top=1152-cy;camera.bottom=1152-(cy+ch);
   camera.updateProjectionMatrix();
-  const ordered=[player,...visitors].sort((a,b)=>(a.player?y:a.y)-(b.player?y:b.y));
-  for(const person of ordered){
-   const actor=actors.find(entry=>entry.who===person);
-   if(!actor)continue;
+  sunlight.intensity=1.25-dim*.72;
+  ambient.intensity=.85+dim*.15;
+  for(const actor of actors){
+   const person=actor.who;
    const isPlayer=person.player;
-   if(!isPlayer&&!person.active){actor.model.visible=false;continue}
-   actor.model.visible=true;
+   if(!isPlayer&&!person.active){actor.root.visible=false;continue}
+   actor.root.visible=true;
    const px=isPlayer?x:person.x,py=isPlayer?y:person.y;
    const busy=isPlayer?testAction==='wave':person.waveUntil&&animationTime<person.waveUntil;
    const resting=isPlayer?seatedNow()||testAction==='up-bench'||testAction==='up-mat':!!person.restUntil;
    const moving=!busy&&(isPlayer?travel>0.35:!!person.moving&&!resting);
-   const mode=busy?'wave':resting
-    ?(isPlayer?testAction:person.goalState==='SIT_BENCH'?'sit-bench':'sit-mat')
-    :moving?(person.walk||'walk'):null;
-   const frame=mode==='wave'?6:mode&&mode.startsWith('walk')
-    ?1+Math.floor(animationTime/135)%6
-    :1+Math.floor(animationTime/700)%2;
-   if(actor.frame!==frame){
-    actor.material.map=frames.get(`${person.customer}:${frame}`);
-    actor.material.needsUpdate=true;
-    actor.frame=frame;
+   const requested=isPlayer?testAction:person.goalState;
+   const sitMode=requested==='SIT_BENCH'?'sit-bench':requested==='SIT_MAT'?'sit-mat':requested==='WALK_DOG'?'walk-dog':null;
+   const standing=isPlayer&&(testAction==='up-bench'||testAction==='up-mat');
+   const playerSitMode=requested==='sit-start-bench'||requested==='sit-bench'?'sit-bench'
+    :requested==='stretch-mat'?'stretch-mat':'sit-mat';
+   const dogWalking=person.goalState==='WALK_DOG'&&Boolean(person.actionUntil)&&animationTime<person.actionUntil;
+   const mode=busy?'wave':standing?'idle':resting?(isPlayer?playerSitMode:sitMode||'sit-mat')
+    :dogWalking?'walk-dog'
+    :moving?(parkDog?.active&&parkDog.owner===person?'walk-dog':'walk'):'idle';
+   applyPose(actor,mode,animationTime/1000,dt);
+   actor.rigRoot.updateMatrixWorld(true);
+   for(const display of actor.displays){
+    display.source.skeleton.update();
+    const vertex=new T.Vector3(),count=display.position.count;
+    for(let index=0;index<count;index++){
+     display.source.getVertexPosition(index,vertex);
+     display.position.setXYZ(index,vertex.x,vertex.y,vertex.z);
+    }
+    display.position.needsUpdate=true;
    }
    const height=(isPlayer?112:102)+36*py/1152;
-   const sitting=mode==='sit-bench'||mode==='sit-start-bench'||mode==='sit-mat'||mode==='sit-start-mat'||mode==='stretch-mat';
-   const poseTarget=sitting?.76:1;
-   actor.poseScale??=1;
-   actor.poseScale+=(poseTarget-actor.poseScale)*(1-Math.exp(-dt*8));
-   const figureHeight=height*actor.poseScale;
-   const image=actor.material.map.image;
-   actor.model.scale.set(image.width/image.height*figureHeight,figureHeight,1);
+   const scale=height/actor.rig.height;
    const vx=isPlayer?faceX:person.vx,vy=isPlayer?faceY:person.vy;
    let desiredYaw=isPlayer&&testAction==='sit-bench'?benchYaw:isPlayer&&(testAction==='sit-mat'||testAction==='sit-start-mat')?yogaMat.yaw:
     (moving?Math.atan2(vx,vy):person.facingYaw??actor.heading??0);
-   if(Math.abs(Math.cos(desiredYaw))<.34){
-    const backFacing=Math.cos(desiredYaw)<0,turnSign=Math.sign(Math.sin(desiredYaw))||1;
-    desiredYaw=turnSign*(backFacing?Math.PI-1.22:1.22);
-   }
    if(!isPlayer&&moving)person.facingYaw=desiredYaw;
    if(actor.heading===undefined)actor.heading=desiredYaw;
    const yawDelta=Math.atan2(Math.sin(desiredYaw-actor.heading),Math.cos(desiredYaw-actor.heading));
    actor.heading+=yawDelta*(1-Math.exp(-dt*9));
-   actor.model.rotation.y=actor.heading;
-   actor.model.position.x=px;
-   actor.model.position.y=1152-py+figureHeight/2;
-   actor.model.position.z=0;
-   actor.model.renderOrder=Math.round(py);
-   actor.material.color.setScalar(1-dim*.16);
+   actor.root.scale.setScalar(scale);
+   actor.root.rotation.y=actor.heading;
+   actor.root.position.x=px-actor.rig.centerX*scale;
+   actor.root.position.y=1152-py-actor.rig.minY*scale;
+   actor.root.position.z=py*.08;
   }
-  drawDog(now);
+  drawDog();
   renderer.render(scene,camera);
  };
 }catch(error){
- status.textContent='3D character assets could not load. Refresh to retry.';
+ status.textContent='Local 3D character rigs could not load. Refresh to retry.';
  throw error;
 }
 last=performance.now();

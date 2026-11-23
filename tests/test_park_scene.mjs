@@ -24,4 +24,5 @@ test('declared entrances route to exits and activity cells',()=>{
     assert.equal(route[0].id,'entrance');
     assert.equal(route.at(-1).id,target);
   }
+  assert.deepEqual(routeCells('crossing','north-curve').map(cell=>cell.id),['crossing','north-detour','north-curve']);
 });
