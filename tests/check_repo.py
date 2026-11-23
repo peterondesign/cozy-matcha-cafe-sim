@@ -6,6 +6,7 @@ Usage:
 """
 from html.parser import HTMLParser
 import os
+import re
 import subprocess
 import sys
 from urllib.parse import urlsplit
@@ -38,6 +39,12 @@ routes = {
 for route, relative_path in routes.items():
     if not os.path.isfile(os.path.join(ROOT, relative_path)):
         errors.append(f"{route}: missing {relative_path}")
+
+with open(os.path.join(ROOT, "shared", "pantry.js"), encoding="utf-8") as source:
+    pantry_ids = re.findall(r"^\s*\['([\w-]+)',\s*'", source.read(), re.MULTILINE)
+for item_id in pantry_ids:
+    if not os.path.isfile(os.path.join(ROOT, "park", "goods", "models", f"{item_id}.glb")):
+        errors.append(f"park/goods/models/{item_id}.glb: missing grocer model")
 
 for current, dirs, names in os.walk(ROOT):
     dirs[:] = [name for name in dirs if name not in (".git", "node_modules")]

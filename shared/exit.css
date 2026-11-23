@@ -1,0 +1,3 @@
+.matcha-exit{display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:44px;padding:9px 24px;color:#4a5830;background:linear-gradient(#fff9e9,#efe5c9);border:2px solid #aeb47a;border-radius:999px;box-shadow:0 3px 8px #4f482a40;font:700 16px Georgia,serif;text-decoration:none}
+.matcha-exit:hover{filter:brightness(1.06)}
+.matcha-exit:focus-visible{outline:3px solid #efa94b;outline-offset:3px}

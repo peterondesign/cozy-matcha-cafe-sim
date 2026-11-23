@@ -103,7 +103,7 @@
     .step-buttons button { flex-basis: 46%; min-height: 64px; font-size: 16px; padding: 8px 14px; }
     .step-buttons button img { width: 36px; height: 36px; }
   }
-  .hud, .steps, .serve, .pause {
+  .hud, .steps, .serve {
     position: absolute;
     z-index: 2;
     border: 0;
@@ -139,7 +139,7 @@
   }
   .steps li.on { background: var(--sage); }
   .steps li.now { outline: 2px solid #fff6e4; outline-offset: 2px; }
-  .serve, .pause {
+  .serve {
     cursor: pointer;
     border-radius: 999px;
     background: #6f853a;
@@ -149,16 +149,6 @@
   }
   .serve { right: 3%; bottom: 4%; padding: 12px 22px; font-size: 20px; }
   .serve[hidden] { display: none; }
-  .pause {
-    right: 2.2%;
-    top: 3%;
-    padding: 8px 14px;
-    background: #3f472ce6;
-    box-shadow: none;
-    font: 700 13px system-ui, sans-serif;
-    text-decoration: none;
-    z-index: 9;
-  }
   .serve:active { transform: translateY(3px); box-shadow: 0 1px 0 #425525; }
   .customer-slot {
     position: absolute;
@@ -402,6 +392,29 @@
     font: 700 12px/32px system-ui, sans-serif;
     text-decoration: none;
   }
+  .counter-exit {
+    position: fixed;
+    z-index: 9;
+    top: 64px;
+    right: 2.2%;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 38px;
+    padding: 7px 14px;
+    border: 2px solid #aeb47a;
+    border-radius: 999px;
+    background: linear-gradient(#fff9e9, #efe5c9);
+    color: #4a5830;
+    box-shadow: 0 3px 8px #4f482a40;
+    font: 700 14px/1 Georgia, serif;
+    text-decoration: none;
+  }
+  @media (max-width: 800px) {
+    .counter-exit { top: 48px; right: 8px; min-height: 34px; padding: 6px 10px; font-size: 12px; }
+  }
+  .counter-exit span:first-child { font-size: 18px; }
+  .counter-exit:focus-visible { outline: 3px solid #efa94b; outline-offset: 3px; }
   @media (max-width: 800px) {
     .park-go { top: 62px; height: 28px; padding: 0 10px; font-size: 11px; line-height: 28px; }
     .order-card { top: 74px; }
@@ -538,20 +551,18 @@
     <p class="line" id="resultLine"></p>
     <div class="payout" id="resultPay"></div>
     <div class="actions">
-      <a id="explorePark" href="../park/">Explore the park</a>
       <button type="button" id="nextCustomer">Welcome the next customer</button>
     </div>
   </div>
-  <matcha-hud></matcha-hud><script src="../shared/world-hud.js"></script>
+  <matcha-hud></matcha-hud><script src="../shared/audio-bus.js?v=2"></script><script src="../shared/world-hud.js?v=3"></script>
   <div class="stock-warn" id="stockWarn" hidden>
     <img id="stockWarnIcon" alt="">
     <p><span id="stockWarnText"></span><span class="meter"><span id="stockWarnFill"></span></span></p>
     <button type="button" id="stockWarnClose">OK</button>
   </div>
-  <a class="pause" id="pause" href="../menu/">Pause</a>
   <button class="serve" id="serve" type="button" hidden>Serve</button>
+  <a class="counter-exit" href="../park/" aria-label="Exit to the park"><span aria-hidden="true">❮</span><span>Exit to Park</span></a>
 </main>
-<script src="../shared/audio-bus.js"></script>
 <script src="../shared/pantry.js"></script>
 <script>
 const ACTIONS = {
@@ -642,14 +653,14 @@ const PLEASED = 6;
 const WALK_AWAY = [7, 8, 9, 10, 11, 12];
 const cache = new Map();
 const SAVE_KEY = 'matchaVisualState';
-const savedState = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
+const savedState = MatchaWorld.clock.read();
 let orderIndex = Number(savedState.orderIndex || 0);
 let stepIndex = 0;
 let phase = 'ready';
 let served = Number(savedState.served || 0);
 const stepScores = [];
 let coins = Number(savedState.coins ?? 120);
-let satisfaction = Number(savedState.satisfaction ?? 82);
+let gems = Number(savedState.gems ?? 0);
 let day = Number(savedState.day || 1);
 let minutes = Number(savedState.minutes ?? 8 * 60);
 const held = { glass: null, bowl: null, pair: null };
@@ -1147,11 +1158,11 @@ function showResult() {
   document.getElementById('resultLine').innerHTML = `${current.name} for ${current.guest}<br>Order Quality ${quality}%.`;
   const starWord = ['', 'one-star', 'two-star', 'three-star'][reward.stars];
   document.getElementById('resultPay').textContent = reward.tip
-    ? `+${reward.base} coins  ·  ✦  +${reward.tip} ${starWord} tip`
-    : `+${reward.base} coins`;
+    ? `+${reward.base} coins  ·  ✦  +${reward.tip} ${starWord} tip  ·  +${reward.stars} gems`
+    : `+${reward.base} coins  ·  +${reward.stars} gems`;
   const payout = reward.base + reward.tip;
   result.dataset.payout = '0';
-  satisfaction = Math.max(0, Math.min(100, Math.round(satisfaction * 0.6 + quality * 0.4)));
+  gems += reward.stars;
   saveCoins(payout);
   paintHud();
   result.hidden = false;
@@ -1164,7 +1175,7 @@ function celebrate(amount) {
   void coinsEl.offsetWidth;
   coinsEl.classList.add('show');
   const burst = document.getElementById('burst');
-  ['.pill.coin', '.pill.smile'].forEach(selector => {
+  ['.pill.coin', '.pill.gem'].forEach(selector => {
     const pill = document.querySelector(selector);
     if (!pill) return;
     pill.classList.remove('bump');
@@ -1190,7 +1201,7 @@ function clockLabel(total) {
 }
 function paintHud() {
   document.getElementById('coinCount').textContent = coins.toLocaleString('en-US');
-  document.getElementById('smileCount').textContent = String(satisfaction);
+  document.getElementById('gemCount').textContent = gems.toLocaleString('en-US');
   document.getElementById('dayCount').textContent = String(day);
   document.getElementById('timeCount').textContent = clockLabel(minutes);
   const veil = document.getElementById('parkNight');
@@ -1202,19 +1213,34 @@ function paintHud() {
   } else veil.style.opacity = night ? '1' : '0';
 }
 function saveProgress() {
-  localStorage.setItem(SAVE_KEY, JSON.stringify({ ...JSON.parse(localStorage.getItem(SAVE_KEY)||'{}'), coins, satisfaction, day, minutes, orderIndex, served }));
+  const state = MatchaWorld.clock.read();
+  const history = state.statsHistory || {};
+  localStorage.setItem(SAVE_KEY, JSON.stringify({
+    ...state,
+    coins,
+    gems,
+    orderIndex,
+    served,
+    coinsGained: Number(state.coinsGained ?? 0),
+    statsHistory: history
+  }));
 }
 function saveCoins(amount) {
   coins += amount;
+  const state = MatchaWorld.clock.read();
+  state.coinsGained = Number(state.coinsGained ?? 0) + amount;
+  localStorage.setItem(SAVE_KEY, JSON.stringify({ ...state, coins, gems, orderIndex, served }));
   saveProgress();
 }
 function advanceClock() {
-  minutes += 40;
-  if (minutes >= 22 * 60) {
-    minutes = 8 * 60;
-    day += 1;
-  }
+  MatchaWorld.clock.advance(40);
 }
+window.addEventListener('matcha-clock', () => {
+  const state = MatchaWorld.clock.read();
+  day = state.day;
+  minutes = state.minutes;
+  paintHud();
+});
 async function serveOrder() {
   if (phase === 'playing' || phase === 'result') return;
   if (order().steps[stepIndex] !== 'serve') return;
@@ -1237,6 +1263,13 @@ function welcomeNext() {
   result.hidden = true;
   orderCard.classList.remove('leaving');
   served += 1;
+  const state = MatchaWorld.clock.read();
+  const history = state.statsHistory || {};
+  const servedAt = Array.isArray(history.servedAt) ? history.servedAt : [];
+  servedAt.push(Date.now());
+  history.servedAt = servedAt.slice(-500);
+  state.statsHistory = history;
+  localStorage.setItem(SAVE_KEY, JSON.stringify({ ...state, coins, gems, orderIndex, served }));
   orderIndex += 1;
   stepIndex = 0;
   stepScores.length = 0;
@@ -1251,30 +1284,17 @@ function welcomeNext() {
   render();
   approach();
 }
-function openPause() {
-  saveProgress();
-  location.href = '../menu/';
-}
-document.getElementById('pause').addEventListener('click', event => {
-  event.preventDefault();
-  openPause();
-});
+window.addEventListener('matcha-pause', saveProgress);
 document.getElementById('nextCustomer').addEventListener('click', welcomeNext);
-document.getElementById('explorePark').addEventListener('click', () => saveCoins(Number(result.dataset.payout || 0)));
 stage.addEventListener('click', event => {
   if (phase === 'result') return;
-  if (event.target.closest('.pause, .serve, .result')) return;
+  if (event.target.closest('.serve, .result')) return;
   const stepButton = event.target.closest('.step-buttons button');
   if (stepButton && Number(stepButton.dataset.step) !== stepIndex) return;
   playStep();
 });
 serve.addEventListener('click', event => { event.stopPropagation(); serveOrder(); });
 window.addEventListener('keydown', event => {
-  if (event.code === 'Escape') {
-    event.preventDefault();
-    openPause();
-    return;
-  }
   if (phase === 'result' || !document.getElementById('mini').hidden) return;
   if (event.code === 'Space' || event.code === 'Enter') {
     event.preventDefault();
@@ -1282,16 +1302,8 @@ window.addEventListener('keydown', event => {
   }
 });
 window.addEventListener('resize', layout);
-let clockOn = true;
 setInterval(() => {
-  if (!clockOn || document.hidden) return;
-  minutes += 1;
-  if (minutes >= 22 * 60) {
-    minutes = 8 * 60;
-    day += 1;
-  }
-  paintHud();
-  if (minutes % 20 === 0) saveProgress();
+  if (document.hidden) return;
   keepAlive();
 }, 1000);
 layout();

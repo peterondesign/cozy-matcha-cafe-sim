@@ -5,19 +5,113 @@
 <title>Rigging Test</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#263329;overflow:hidden;font:600 16px Georgia,serif}
-#stage{position:fixed;inset:0;overflow:hidden}
-#walk-right{position:absolute;width:min(45vw,448px);height:auto;left:50%;top:50%;transform:translate(-50%,-50%);user-select:none;pointer-events:none}
-#controls{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));z-index:2;display:flex;gap:8px;transform:translateX(-50%)}
-#controls button{min-width:44px;height:44px;border:3px double #9e7b48;border-radius:13px;background:#fff0cf;color:#49351f;font:700 18px Georgia;cursor:pointer;touch-action:none}
+body{margin:0;background:#263329;color:#f8efd9;font:600 15px Georgia,serif}
+button,a{font:inherit}
+#app{height:100dvh;min-height:420px;display:grid;grid-template-columns:minmax(190px,240px) minmax(0,1fr) minmax(190px,230px);gap:14px;padding:14px}
+aside{min-height:0;overflow:auto;background:#18231de8;border:1px solid #6f765b;border-radius:16px;padding:14px}
+h1,h2,p{margin:0}
+h1{font-size:20px}
+h2{font-size:16px}
+.panel-heading{display:grid;gap:5px;margin-bottom:12px}
+.muted,.asset-note{color:#c4c6a9;font:12px/1.45 Georgia,serif}
+.group{display:grid;gap:6px;margin-top:14px}
+.group-title{padding:0 2px;color:#c4c6a9;font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+.action,.rotation,.customer{border:1px solid #70795d;border-radius:10px;background:#334332;color:#fff4d8;cursor:pointer;text-align:left}
+.action{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:9px 10px}
+.action:hover:not(:disabled),.rotation:hover:not(:disabled),.customer:hover{border-color:#f0d27a;background:#43543e}
+.action[aria-pressed=true],.rotation[aria-pressed=true],.customer[aria-pressed=true]{border-color:#f0d27a;background:#5b6542;box-shadow:inset 0 0 0 1px #f0d27a}
+.action:disabled,.rotation:disabled{cursor:not-allowed;opacity:.5}
+.availability{color:#c4c6a9;font-size:11px;white-space:nowrap}
+.rotation-options{display:flex;gap:5px;margin:5px 0 0 8px}
+.rotation{flex:1;padding:6px 4px;text-align:center;font-size:12px}
+#stage{min-width:0;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:10px;position:relative;padding:8px}
+#stage-top{min-width:0;display:flex;justify-content:space-between;align-items:center;gap:12px}
+#action-name{font-size:16px;white-space:nowrap}
+#asset-name{color:#c4c6a9;font:12px/1.3 ui-monospace,monospace;text-align:right}
+#preview-frame{width:min(100%,896px);max-height:100%;aspect-ratio:896/512;place-self:center;display:grid;place-items:center;overflow:hidden;border:1px solid #7d8267;border-radius:12px;background-color:#354139;background-image:linear-gradient(45deg,#465349 25%,transparent 25%),linear-gradient(-45deg,#465349 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#465349 75%),linear-gradient(-45deg,transparent 75%,#465349 75%);background-size:24px 24px;background-position:0 0,0 12px,12px -12px,-12px 0}
+#preview{display:block;max-width:100%;max-height:100%;object-fit:contain}
+#preview[hidden]{display:none}
+#sheet-preview{position:relative;width:min(100%,896px);max-height:100%;aspect-ratio:896/512;background-repeat:no-repeat}
+#sheet-preview[hidden]{display:none}
+.anchor{position:absolute;width:14px;height:14px;transform:translate(-50%,-50%);border:2px solid #fff4d8;border-radius:50%;box-shadow:0 0 0 2px #bc3d29;pointer-events:none}
+#empty-state{display:none;padding:18px;color:#d4d7bd;text-align:center}
+#stage[data-empty=true] #preview{display:none}
+#stage[data-empty=true] #empty-state{display:block}
+#reference-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.reference-link{display:grid;align-content:start;gap:4px;min-width:0;border:1px solid #6f765b;border-radius:10px;background:#18231de8;padding:8px;color:#f8efd9;text-decoration:none}
+.reference-link strong{font-size:12px}
+.reference-link span{color:#c4c6a9;font:11px/1.35 Georgia,serif}
+.reference-link .download-label{color:#f0d27a}
+#customers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.customer{display:grid;grid-template-rows:116px auto;justify-items:center;gap:5px;padding:7px;text-align:center}
+.customer img{width:100%;height:116px;object-fit:contain;object-position:center bottom}
+.customer-name{font-size:13px}
+.customer-id{color:#c4c6a9;font-size:11px}
+#selected-customer{margin-top:10px;color:#f0d27a;font-size:12px}
+#generator-help{margin-top:12px;color:#c4c6a9;font:12px/1.45 Georgia,serif}
+#status{min-height:32px;margin-top:12px;color:#ffdc9b;font:12px/1.4 Georgia,serif}
+@media(max-width:850px){
+ #app{grid-template-columns:minmax(156px,200px) minmax(0,1fr) minmax(156px,188px);gap:8px;padding:8px}
+ aside{padding:10px}
+ #customers{grid-template-columns:1fr}
+ .customer{grid-template-columns:48px 1fr;grid-template-rows:auto;justify-items:start;text-align:left;align-items:center}
+ .customer img{grid-row:span 2;width:44px;height:58px}
+}
+@media(max-width:620px){
+ body{overflow:auto}
+ #app{height:auto;min-height:100dvh;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(300px,48vh) auto auto}
+ #stage{grid-row:1;min-height:300px;padding-top:42px}
+ #actions-panel{grid-row:2;max-height:38vh}
+ #customer-panel{grid-row:3}
+ #customers{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 </style>
-<main id="stage" aria-label="Walk right GIF test">
-  <img id="walk-right" src="walk_right.gif" alt="Character walking right">
+<main id="app">
+  <aside id="actions-panel" aria-labelledby="actions-title">
+    <div class="panel-heading">
+      <h1 id="actions-title">Actions</h1>
+      <p class="muted">Choose an action to preview it. Walk Left mirrors Walk Right.</p>
+    </div>
+    <div id="action-list"></div>
+    <p class="asset-note" style="margin-top:16px">Use transparent character-only sheets, ordered left-to-right then top-to-bottom. The ring marks the declared contact anchor. Register grid, frames, playback, FPS and anchor in <code>action-assets.json</code>; see the park architecture for scene views and the full protocol.</p>
+  </aside>
+  <section id="stage" aria-label="Action preview">
+    <div id="stage-top">
+      <h2 id="action-name">Loading actions…</h2>
+      <span id="asset-name"></span>
+    </div>
+    <div id="preview-frame">
+      <img id="preview" alt="">
+      <div id="sheet-preview" hidden aria-hidden="true"><span class="anchor"></span></div>
+      <p id="empty-state">Select an action with an available image.</p>
+    </div>
+    <div id="reference-links">
+      <a class="reference-link" href="walk_right-cycle-guide.png" download>
+        <strong>Walk cycle guide · 16 frames</strong>
+        <span>Transparent 4 × 4 pose sequence. Use motion only.</span>
+        <span class="download-label">Download cycle guide PNG</span>
+      </a>
+      <a class="reference-link" href="action-sheet-template.png" download>
+        <strong>Blank 16-frame sheet</strong>
+        <span>Transparent 4 × 4 grid; each cell is 896 × 512.</span>
+        <span class="download-label">Download sheet template PNG</span>
+      </a>
+      <a class="reference-link" href="../park/world-day.jpg" target="_blank" rel="noopener">
+        <strong>Park scene reference</strong>
+        <span>Match the named bench and mat views to their actual scene perspective.</span>
+      </a>
+    </div>
+  </section>
+  <aside id="customer-panel" aria-labelledby="customers-title">
+    <div class="panel-heading">
+      <h1 id="customers-title">Customers</h1>
+      <p class="muted">Select a reference character.</p>
+    </div>
+    <div id="customers"></div>
+    <p id="selected-customer" aria-live="polite"></p>
+    <p id="generator-help">For image generation: keep skin tone, blush, eye whites, and palette identical in every frame. Lock lighting and white balance; avoid frame-by-frame color shifts.</p>
+    <p id="status" role="status" aria-live="polite"></p>
+  </aside>
 </main>
-<div id="controls" aria-label="Walk test controls">
-  <button id="left" type="button" aria-label="Move left">◀</button>
-  <button id="reset" type="button" aria-label="Reset position">↺</button>
-  <button id="right" type="button" aria-label="Move right">▶</button>
-</div>
-<script type="module" src="rig.js"></script>
+<script type="module" src="rig.js?v=2"></script>
 </html>

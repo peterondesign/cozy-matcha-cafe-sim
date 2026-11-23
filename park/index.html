@@ -1,17 +1,20 @@
 <!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Matcha Park</title>
+<link rel="icon" href="../brand/favicon-32.png" sizes="32x32">
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#263329;color:#432e1e;font:600 16px Georgia,serif}
 canvas{display:block;width:100vw;height:100dvh}
 #park{position:relative;z-index:0}
 #figures{position:fixed;inset:0;z-index:1;pointer-events:none;background:transparent}
-#canopy{position:fixed;inset:0;z-index:2;pointer-events:none}
+#character-sprites{position:fixed;inset:0;z-index:2;pointer-events:none;background:transparent}
+#player-marker{position:fixed;z-index:6;pointer-events:none;width:8px;height:8px;background:#f6d46e;border:1px solid #815819;box-shadow:0 0 4px #ffe893;transform:translate(-50%,-50%) rotate(45deg)}
+#wave-reward{position:fixed;z-index:7;pointer-events:none;color:#fff4b1;font:bold 16px Georgia,serif;text-shadow:0 1px 3px #49351f;transform:translate(-50%,-50%)}
 button,output{color:inherit;background:linear-gradient(#fff2d8,#e4c89b);border:3px double #89683c;border-radius:16px;box-shadow:0 3px 6px #31251666;font:inherit;padding:9px}
 button{cursor:pointer;touch-action:none;user-select:none}
 button:active,button.active{background:#93a96c}
 #hint{position:fixed;z-index:5;pointer-events:auto;display:flex;flex-direction:column;align-items:center;gap:6px;transform:translate(-50%,-118%);filter:drop-shadow(0 2px 8px #d9b15a88);cursor:pointer;border:0;background:transparent;padding:0}
 #hint[hidden]{display:none!important}
-#hint b{background:linear-gradient(#fff8e4,#f3d9a4);border:3px solid #f0d27a;border-radius:18px;padding:8px 14px;color:#5a3d1e;font:700 15px Georgia,serif;box-shadow:0 0 18px #ffe08a88}
+#hint b{background:linear-gradient(#fff8e4,#f3d9a4);border:3px solid #f0d27a;border-radius:18px;padding:8px 14px;color:#5a3d1e;font:700 15px Georgia,serif;box-shadow:0 0 18px #ffe08a88;white-space:nowrap}
 #hint i{width:54px;height:22px;border:3px solid #ffe27a;border-radius:50%;box-shadow:0 0 16px #ffe27acc,inset 0 0 8px #fff6c8;background:#ffe27a33;animation:pulse 1.2s ease-in-out infinite}
 @keyframes pulse{50%{transform:scale(1.12);box-shadow:0 0 22px #ffe27a}}
 nav{position:fixed;bottom:max(14px,env(safe-area-inset-bottom));left:14px;z-index:6;display:grid;grid-template-columns:repeat(3,44px);gap:2px}
@@ -20,4 +23,29 @@ nav button:first-child{grid-column:2}
 nav button:nth-child(2){grid-column:1}
 output{position:fixed;left:50%;bottom:16px;z-index:6;transform:translateX(-50%);pointer-events:none}
 output:empty{display:none}
-</style><link rel="stylesheet" href="world.css"><matcha-hud></matcha-hud><script src="../shared/world-hud.js"></script><header><a href="../menu/">Menu</a><a href="../counter/">Counter</a><a href="../grocer/">Grocer</a><a href="../rigging-test/">Rigging Test</a></header><canvas id="park" data-scene-layer="background" aria-label="Matcha Park. Move using WASD, arrow keys, E to interact, the direction pad, or click the ground."></canvas><canvas id="figures" data-scene-layer="models-props" aria-hidden="true"></canvas><canvas id="canopy" data-scene-layer="foreground" aria-hidden="true"></canvas><button id="hint" type="button" hidden><b>Walk Here</b><i></i></button><nav aria-label="Walk"><button data-key="up" aria-label="North">▲</button><button data-key="left" aria-label="West">◀</button><button data-key="down" aria-label="South">▼</button><button data-key="right" aria-label="East">▶</button></nav><output aria-live="polite"></output><script src="market/three-r170.js"></script><script type="module" src="park.js"></script></html>
+#park-loading{position:fixed;inset:0;z-index:100;display:grid;place-items:center;overflow:hidden;background:#d6dfbf;color:#493b2d}
+#park-loading[hidden]{display:none}
+.loading-scene{position:absolute;inset:0;background:#b4c797 url('world-day.webp') center/cover no-repeat}
+.loading-card{position:relative;width:min(360px,calc(100vw - 40px));padding:24px;text-align:center;background:#fff6e8ed;border:3px double #9e7b48;border-radius:20px;box-shadow:0 6px 24px #43321b30}
+.loading-card h1{font-size:23px;margin:0 0 12px}
+.loading-card p{margin:0 0 12px;font-size:15px}
+.loading-card progress{width:100%;height:15px;accent-color:#789459}
+</style><link rel="stylesheet" href="world.css"><matcha-hud></matcha-hud><script src="../shared/audio-bus.js?v=2"></script><script src="../shared/world-hud.js?v=3"></script><canvas id="park" data-scene-layer="background" aria-label="Matcha Park. Move the barista using WASD, arrow keys, E to interact, the direction pad, or click the ground."></canvas><canvas id="figures" data-scene-layer="models-props" aria-hidden="true"></canvas><canvas id="character-sprites" data-scene-layer="characters" aria-hidden="true"></canvas><div id="player-marker" aria-hidden="true"></div><div id="wave-reward" role="status" aria-live="polite" hidden></div><button id="hint" type="button" hidden><b>Walk Here</b><i></i></button><nav aria-label="Walk"><button data-key="up" aria-label="North">▲</button><button data-key="left" aria-label="West">◀</button><button data-key="down" aria-label="South">▼</button><button data-key="right" aria-label="East">▶</button></nav><output aria-live="polite"></output>
+<section id="park-loading" aria-label="Loading Matcha Park">
+ <div class="loading-scene" aria-hidden="true"></div>
+ <div class="loading-card"><h1>Preparing the park</h1><p id="park-loading-label" role="status">Loading park artwork</p><progress id="park-loading-progress" max="100" value="0" aria-label="Park loading progress"></progress></div>
+</section>
+<script>
+const loadingHour=Math.floor((MatchaWorld.clock.read().minutes??480)/60);
+if(loadingHour<6||loadingHour>=19)document.querySelector('.loading-scene').style.backgroundImage="url('world-night.webp')";
+function parkLoadingError(){
+ const loading=document.querySelector('#park-loading');
+ if(loading.hidden)return;
+ document.querySelector('#park-loading-label').textContent=document.querySelector('output').textContent||'Park could not load. Refresh to retry.';
+ document.querySelector('#park-loading-label').setAttribute('role','alert');
+ document.querySelector('#park-loading-progress').hidden=true;
+}
+window.addEventListener('error',parkLoadingError);
+window.addEventListener('unhandledrejection',parkLoadingError);
+</script>
+<script src="market/three-r170.js"></script><script type="module" src="park.js?v=15"></script></html>

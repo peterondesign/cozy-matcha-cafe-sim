@@ -1,0 +1,226 @@
+{
+  "walk_right": {
+    "barista": {
+      "file": "matcha_barista_walk_right.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "anchor": [0.5, 0.96],
+      "heightFraction": 0.92
+    },
+    "bones": {
+      "file": "walk_right.gif",
+      "frames": 16
+    },
+    "01": {
+      "file": "sato_walk_right_4k.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "anchor": [0.5, 0.967],
+      "heightFraction": 0.926
+    },
+    "02": {
+      "file": "hana_walk_right_cycle.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 10,
+      "fps": 12,
+      "idleFrame": 10
+    },
+    "03": {
+      "file": "mio_walk_right.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "anchor": [0.5, 0.954],
+      "heightFraction": 0.917
+    },
+    "04": {
+      "file": "ken_walk_right.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "anchor": [0.5, 0.935],
+      "heightFraction": 0.898
+    },
+    "05": {
+      "file": "ren_walk_right.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "anchor": [0.5, 0.934],
+      "heightFraction": 0.922
+    },
+    "06": {
+      "file": "aya_walk_right.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "anchor": [0.5, 0.942],
+      "heightFraction": 0.894
+    }
+  },
+  "walk_left": {
+    "02": {
+      "mirrorOf": "walk_right"
+    }
+  },
+  "walk_down": {
+    "barista": {
+      "file": "matcha_barista_walk_down.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "anchor": [0.5, 0.95],
+      "heightFraction": 0.91
+    },
+    "bones": {
+      "file": "walk_down-transparent.gif"
+    },
+    "01": {
+      "file": "sato_walk_down_4k.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "anchor": [0.5, 0.964],
+      "heightFraction": 0.944
+    },
+    "02": {
+      "file": "hana_walk_down_4k-transparent.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12
+    },
+    "03": {
+      "file": "mio_walk_down.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "anchor": [0.5, 0.958],
+      "heightFraction": 0.927
+    },
+    "04": {
+      "file": "ken_walk_down.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "anchor": [0.5, 0.955],
+      "heightFraction": 0.932
+    },
+    "05": {
+      "file": "ren_walk_down.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "anchor": [0.5, 0.954],
+      "heightFraction": 0.931
+    },
+    "06": {
+      "file": "aya_walk_down.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "anchor": [0.5, 0.957],
+      "heightFraction": 0.913
+    }
+  },
+  "walk_up": {
+    "barista": {
+      "file": "matcha_barista_walk_up.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "anchor": [0.5, 0.975],
+      "heightFraction": 0.94
+    },
+    "01": {
+      "file": "sato_walk_up_4k.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "anchor": [0.5, 0.961],
+      "heightFraction": 0.924
+    },
+    "02": {
+      "file": "hana_walk_up_4k-transparent.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12
+    },
+    "03": {
+      "file": "mio_walk_up.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "anchor": [0.5, 0.974],
+      "heightFraction": 0.928
+    },
+    "04": {
+      "file": "ken_walk_up.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "anchor": [0.5, 0.967],
+      "heightFraction": 0.933
+    },
+    "05": {
+      "file": "ren_walk_up.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "anchor": [0.5, 0.959],
+      "heightFraction": 0.911
+    },
+    "06": {
+      "file": "aya_walk_up_v2.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "anchor": [0.5, 0.976],
+      "heightFraction": 0.95
+    }
+  },
+  "wave_down": {
+    "barista": {
+      "file": "matcha_barista_wave.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "playback": "once",
+      "anchor": [0.5, 0.965],
+      "heightFraction": 0.92
+    },
+    "01": {
+      "file": "sato_wave.png",
+      "columns": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 12,
+      "playback": "once",
+      "anchor": [0.5, 0.969],
+      "heightFraction": 0.945
+    }
+  }
+}

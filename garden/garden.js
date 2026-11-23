@@ -1,158 +1,177 @@
 (() => {
-  const art = '../assets/garden/';
-  const practice = new URLSearchParams(location.search).has('dev');
-  const slot = practice ? 'practiceGarden' : 'gardenBeds';
-  const views = new Map();
-  const feedback = new Map();
-  const games = new Map();
-  const minute = Garden.minute;
+  const practice=new URLSearchParams(location.search).has('dev');
+  const slot=practice?'practiceGarden':'gardenBeds';
+  const views=new Map(), attention=new Map();
+  let selected=null;
+  const panel=document.querySelector('#care-panel');
+  const gardenNow=()=>MatchaWorld.clock.gardenNow();
   function latest() {
     const state=MatchaPantry.load();
     state[slot] ||= {};
     let legacy;
-    try { legacy=JSON.parse(localStorage.getItem('matcha-garden-v2'))?.plants; } catch {}
-    for(const crop of Garden.crops) {
-      state[slot][crop.id] ||= Garden.initial(crop,Date.now(),legacy?.find(p=>p.id===crop.id));
-    }
+    try { legacy=JSON.parse(localStorage.getItem('matcha-garden-v2'))?.plants; }
+    catch(error) { console.warn('Legacy garden could not be read.',error); }
+    for(const crop of Garden.crops) state[slot][crop.id] ||= Garden.initial(crop,gardenNow(),legacy?.find(p=>p.id===crop.id));
     return state;
   }
   async function change(fn) {
     function commit() {
       const state=latest();
-      fn(state);
+      const afterSave=fn(state);
       localStorage.setItem(MatchaPantry.KEY,JSON.stringify(state));
+      window.dispatchEvent(new Event('matcha-stock'));
       refresh();
+      if(afterSave)afterSave();
     }
-    if(navigator.locks) await navigator.locks.request('matcha-garden',commit);
-    else commit();
+    try {
+      if(navigator.locks) await navigator.locks.request('matcha-garden',commit);
+      else commit();
+    } catch(error) {
+      console.error('Garden changes could not be saved.',error);
+      announce('Could not save your garden. Please try again.');
+    }
   }
   function duration(ms) {
-    const mins=Math.ceil(Math.max(ms,0)/minute);
+    const mins=Math.ceil(Math.max(ms,0)/Garden.minute);
     return mins===0?'now':mins<60?mins+'m':Math.floor(mins/60)+'h'+(mins%60?' '+mins%60+'m':'');
   }
-  function announce(crop,line) {
-    feedback.set(crop.id,{line,until:Date.now()+4000});
-    document.querySelector('#notice').textContent=line;
-    views.get(crop.id).article.animate([{filter:'brightness(1.09)'},{filter:'none'}],{duration:450});
+  let noticeTimer;
+  function announce(line) {
+    const notice=document.querySelector('#notice');
+    notice.textContent=line;
+    clearTimeout(noticeTimer);
+    noticeTimer=setTimeout(()=>{notice.textContent='';},5000);
+  }
+  function harvestAnimation(crop) {
+    const source=views.get(crop.id).image.getBoundingClientRect();
+    const target=document.getElementById('pantry-'+crop.id);
+    if(!target)return;
+    target.classList.remove('harvested');
+    void target.offsetWidth;
+    target.classList.add('harvested');
+    if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    const destination=target.getBoundingClientRect(), item=document.createElement('img');
+    item.className='harvest-flight';
+    item.src=MatchaPantry.icon(crop.id==='strawberries'?'berries':crop.id);
+    item.alt='';
+    item.style.left=(source.left+source.width/2-24)+'px';
+    item.style.top=(source.top+source.height/2-24)+'px';
+    document.body.append(item);
+    const dx=destination.left+destination.width/2-(source.left+source.width/2);
+    const dy=destination.top+destination.height/2-(source.top+source.height/2);
+    const flight=item.animate([
+      {transform:'translate(0,0) scale(.8)',opacity:0},
+      {transform:`translate(${dx*.4}px,${dy*.4-35}px) scale(1.2)`,opacity:1,offset:.4},
+      {transform:`translate(${dx}px,${dy}px) scale(.45)`,opacity:0}
+    ],{duration:900,easing:'ease-in-out'});
+    flight.onfinish=flight.oncancel=()=>item.remove();
   }
   function createCard(crop) {
     const article=document.createElement('article');
-    const honey=crop.id==='honey';
-    const img=(name)=>art+name+'.webp';
-    const stages=crop.stages.map((stage,i)=>{
-      const src=honey?'../park/goods/honey.png':img(crop.id+'-'+i);
-      return '<li title="'+stage+'"><img src="'+src+'" alt="'+stage+'"></li>';
-    }).join('');
-    article.innerHTML=`<div class="identity" title="${crop.family}"><img src="${honey?'../park/goods/honey.png':img(crop.id)}" alt=""><h2>${crop.name}</h2></div>
-      <div class="bed"><div class="talk"><img class="face" alt=""><p></p></div>
-      <ol aria-label="Growth stages">${stages}</ol>
-      <div class="meter" role="progressbar" aria-label="Growth" aria-valuemin="0" aria-valuemax="100"><i></i><b></b></div>
-      <div class="controls"><span class="clock"><img alt=""><span></span></span><button class="act"><img alt=""><span></span></button></div>
-      <div class="branches" hidden aria-label="Prune the highlighted tips"></div></div>`;
-    document.querySelector(honey?'#apiary':'#beds').append(article);
+    article.innerHTML=`<button class="plot" type="button" aria-label="View ${crop.name}" aria-pressed="false">
+      <span class="plot-name">${crop.name}</span><img class="plant-art" src="assets/bed-${crop.id}.png" alt="">
+      <span class="plot-status"></span></button>
+      <div class="growth"><span class="sr-only">Growth </span><input type="range" min="0" max="100" step="1" aria-label="${crop.name} growth progress"><span class="percent"></span></div>`;
+    document.querySelector('#beds').append(article);
     const q=s=>article.querySelector(s);
-    const ui={article, face:q('.face'), line:q('.talk p'), stages:[...article.querySelectorAll('li')], meter:q('.meter'), fill:q('.meter i'), percent:q('.meter b'), clock:q('.clock span'), clockIcon:q('.clock img'), button:q('.act'), label:q('.act span'), icon:q('.act img'), branches:q('.branches')};
+    const ui={article, image:q('.plant-art'), plot:q('.plot'), status:q('.plot-status'), percent:q('.percent'),progress:q('input')};
     views.set(crop.id,ui);
-    ui.button.onclick=()=>{
-      if(ui.button.dataset.action==='harvest') return change(state=>{
-        const bed=state[slot][crop.id];
-        if(Garden.inspect(bed,Date.now()).status!=='ready') return;
+    ui.plot.addEventListener('click',()=>{
+      if(selected?.id===crop.id) {
+        selected=null;
+        panel.hidden=true;
+        ui.plot.setAttribute('aria-pressed','false');
+      } else select(crop);
+    });
+    ui.progress.addEventListener('input',()=>{
+      const percent=Number(ui.progress.value);
+      select(crop);
+      ui.progress.style.setProperty('--progress',percent+'%');
+      change(state=>Garden.seek(state[slot][crop.id],percent,gardenNow()));
+    });
+  }
+  function select(crop) {
+    selected=crop;
+    panel.hidden=false;
+    for(const [id,ui] of views) ui.plot.setAttribute('aria-pressed',String(id===crop.id));
+    refresh();
+  }
+  document.querySelector('#care-action').addEventListener('click',()=>{
+    if(!selected)return;
+    const crop=selected;
+    change(state=>{
+      const time=gardenNow(),bed=state[slot][crop.id],view=Garden.inspect(bed,time);
+      if(view.status==='ready') {
         if(!practice) {
           state.stock[crop.id==='strawberries'?'berries':crop.id]++;
           state.harvests=(state.harvests||0)+1;
         }
-        state[slot][crop.id]=Garden.plant(crop,Date.now());
-        announce(crop,practice?'Practice harvest complete.':crop.name+' added to the café pantry.');
-      });
-      if(games.has(crop.id)) return;
-      if(crop.verb==='Water') {
-        games.set(crop.id,'water');
-        ui.button.classList.add('watering');
-        refresh();
-        setTimeout(()=>finish(crop),850);
-      } else {
-        games.set(crop.id,'prune');
-        ui.branches.hidden=false;
-        ui.branches.replaceChildren();
-        for(let i=0;i<3;i++){
-          const tip=document.createElement('button');
-          tip.innerHTML='<img src="'+img('sprout')+'" alt="">';
-          tip.setAttribute('aria-label','Snip tip '+(i+1));
-          tip.onclick=()=>{tip.disabled=true;if(!ui.branches.querySelector('button:not(:disabled)'))finish(crop)};
-          ui.branches.append(tip);
-        }
-        refresh();
-        ui.branches.firstChild.focus();
+        state[slot][crop.id]=Garden.plant(crop,time);
+        return ()=>{
+          announce(practice?'Practice harvest complete.':crop.name+' added to the café pantry.');
+          if(!practice)harvestAnimation(crop);
+        };
+      } else if(Garden.tend(bed,time)) {
+        return ()=>announce(crop.name+' watered.');
       }
-    };
-  }
-  function finish(crop) {
-    const ui=views.get(crop.id);
-    games.delete(crop.id);
-    ui.branches.hidden=true;
-    ui.button.classList.remove('watering');
-    change(state=>{
-      if(Garden.tend(state[slot][crop.id],Date.now())) announce(crop,crop.verb==='Water'?'Freshly watered!':'Three tips trimmed!');
     });
-  }
+  });
   function refresh() {
-    const state=latest(), time=Date.now();
-    let readyCount=0, careCount=0;
+    const state=latest(),time=gardenNow();
     for(const crop of Garden.crops) {
-      const ui=views.get(crop.id), bed=state[slot][crop.id], v=Garden.inspect(bed,time);
-      const ready=v.status==='ready', missed=v.status==='missed';
-      const care=['missed','available','approaching'].includes(v.status);
-      const harvest=ready || (!care && (bed.nextCareAt===null || time+bed.growthDuration-v.growth<=bed.nextCareAt));
-      const action=harvest?'Harvest':crop.verb;
-      const icon=harvest?'basket':crop.verb==='Water'?'drop':'sprout';
-      if(ready)readyCount++;
-      if(care)careCount++;
-      ui.article.dataset.state=v.status;
-      const msg=feedback.get(crop.id);
-      let line='The garden is looking good.';
-      if(ready)line='Ready to harvest!';
-      else if(missed)line='Oh no, I forgot to '+crop.verb.toLowerCase()+'!';
-      else if(v.status==='available')line=crop.verb==='Water'?'Time for a drink!':'Time to prune the tips!';
-      else if(v.status==='approaching')line='Care is due soon.';
-      else if(v.growthProgress>=78)line='Almost ready to harvest!';
-      if(games.get(crop.id)==='prune')line='Tap the three leaf tips.';
-      ui.line.textContent=msg?.until>time?msg.line:line;
-      ui.face.src=art+(care?'concerned':'happy')+'.webp';
-      ui.face.alt=missed?'Sad gardener':care?'Concerned gardener':ready?'Excited gardener':'Happy gardener';
-      ui.stages.forEach((el,i)=>el.toggleAttribute('aria-current',i===v.stage));
-      ui.meter.setAttribute('aria-valuenow',v.growthProgress);
-      ui.fill.style.width=v.growthProgress+'%';
-      ui.percent.textContent=v.growthProgress+'%';
-      ui.clockIcon.src=art+(harvest?'sprout':icon)+'.webp';
-      ui.clock.textContent=ready?'Harvest now':missed?'Overdue '+duration(time-v.missedCareAt):v.status==='available'?action+' now':action+' in '+duration(harvest?bed.growthDuration-v.growth:bed.nextCareAt-time);
-      ui.label.textContent=games.get(crop.id)==='water'?'Watering…':action;
-      ui.icon.src=art+icon+'.webp';
-      ui.button.dataset.action=harvest?'harvest':'care';
-      ui.button.setAttribute('aria-label',action+' '+crop.name);
-      ui.button.disabled=games.has(crop.id)||!(ready||care);
+      const id=crop.id==='strawberries'?'berries':crop.id;
+      document.querySelector('#pantry-'+crop.id+' .quantity').textContent=state.stock[id];
     }
-    document.querySelector('#summary').textContent='Day '+(state.day||1)+' · '+state.coins+' coins · '+(4-readyCount-careCount)+' healthy · '+careCount+' need care · '+readyCount+' ready';
+    for(const crop of Garden.crops) {
+      const ui=views.get(crop.id),bed=state[slot][crop.id],v=Garden.inspect(bed,time);
+      const ready=v.status==='ready',care=['missed','available','approaching'].includes(v.status);
+      ui.article.dataset.state=v.status;
+      ui.image.style.setProperty('--growth-scale',String(.78+.22*v.growthProgress/100));
+      ui.status.textContent=ready?'Ready!':care?'Needs care':'';
+      ui.percent.textContent=v.growthProgress+'%';
+      if(document.activeElement!==ui.progress || !ui.progress.matches(':active')) {
+        ui.progress.value=v.growthProgress;
+        ui.progress.style.setProperty('--progress',v.growthProgress+'%');
+      }
+      ui.progress.setAttribute('aria-valuetext',v.growthProgress+'% grown, '+crop.stages[v.stage]);
+      let line;
+      if(ready) line='Ready to harvest!';
+      else if(v.status==='missed') line=crop.verb+' overdue'+(v.lostProgress>0?' · '+v.lostProgress.toFixed(1)+'% progress lost':' · growth has stopped')+'.';
+      else if(v.status==='available') line=crop.verb+' now · '+duration(bed.nextCareAt+5*Garden.minute-time)+' left in the care window.';
+      else if(v.status==='approaching') line=crop.verb+' is due soon.';
+      else if(bed.nextCareAt===null) line='Growing on its own · ready in '+duration(bed.growthDuration-v.growth)+'.';
+      else line=crop.verb+' in '+duration(bed.nextCareAt-time)+'.';
+      if(selected?.id===crop.id) {
+        const action=document.querySelector('#care-action');
+        document.querySelector('#care-icon').src=MatchaPantry.icon(crop.id==='strawberries'?'berries':crop.id);
+        document.querySelector('#care-name').textContent=crop.name;
+        document.querySelector('#care-stage').textContent=crop.stages[v.stage];
+        document.querySelector('#care-message').textContent=line;
+        panel.dataset.state=v.status;
+        action.textContent=ready?'Harvest':crop.verb;
+        action.setAttribute('aria-label',(ready?'Harvest ':crop.verb+' ')+crop.name);
+        action.disabled=!(ready||care);
+      }
+      const previous=attention.get(crop.id);
+      const loss=Math.floor(v.lostProgress);
+      if(previous && ((care&&!previous.care) || loss>previous.loss)) announce(crop.name+': '+line);
+      attention.set(crop.id,{care,loss});
+    }
     document.body.classList.toggle('night',(state.minutes??480)<360||(state.minutes??480)>=1080);
   }
-  Garden.crops.forEach(createCard);
-  if(practice) {
-    const dev=document.querySelector('#dev');
-    dev.hidden=false;
-    for(const mode of ['Healthy','Approaching','Available','Missed','Ready']) {
-      const btn=document.createElement('button');
-      btn.textContent=mode;
-      btn.onclick=()=>change(state=>Garden.crops.forEach(c=>{
-        const bed=Garden.plant(c,Date.now(),mode==='Ready'?1:.5);
-        if(c.interval)bed.nextCareAt+=({Healthy:20,Approaching:3,Available:-1,Missed:-17,Ready:20}[mode]-c.interval)*minute;
-        state[slot][c.id]=bed;
-      }));
-      dev.append(btn);
-    }
+  for(const crop of Garden.crops) {
+    createCard(crop);
+    const item=document.createElement('div'),id=crop.id==='strawberries'?'berries':crop.id;
+    item.id='pantry-'+crop.id;
+    item.className='pantry-item';
+    item.title=crop.name;
+    item.innerHTML=`<img src="${MatchaPantry.icon(id)}" alt=""><span class="sr-only">${crop.name}: </span><span class="quantity"></span>`;
+    document.querySelector('#pantry-items').append(item);
   }
-  const leave=document.querySelector('#leave');
-  if(new URLSearchParams(location.search).get('from')==='counter')leave.href='../../counter/';
+  if(new URLSearchParams(location.search).get('from')==='counter') document.querySelector('matcha-exit').setAttribute('href','../counter/');
   change(()=>{});
   setInterval(refresh,1000);
   window.addEventListener('pageshow',refresh);
   window.addEventListener('storage',refresh);
+  window.addEventListener('matcha-clock',refresh);
 })();

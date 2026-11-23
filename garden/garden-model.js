@@ -1,7 +1,7 @@
 const Garden = (() => {
   const minute = 60000;
   const crops = [
-    {id:'matcha', name:'Matcha Powder', family:'Tea shrub', verb:'Prune', minutes:290, interval:90, stages:['Seedling','Growing','Mature','Ready']},
+    {id:'matcha', name:'Matcha Powder', family:'Tea shrub', verb:'Water', minutes:290, interval:90, stages:['Seedling','Growing','Mature','Ready']},
     {id:'strawberries', name:'Strawberries', family:'Fruit crop', verb:'Water', minutes:90, interval:30, stages:['Seedling','Growing','Fruiting','Ready']},
     {id:'blueberries', name:'Blueberries', family:'Berry bush', verb:'Water', minutes:150, interval:60, stages:['Seedling','Growing','Fruiting','Ready']},
     {id:'honey', name:'Honey', family:'Apiary', verb:'Inspect hive', minutes:70, interval:0, stages:['Settling','Building','Full','Ready']}
@@ -24,7 +24,8 @@ const Garden = (() => {
     else if (bed.nextCareAt!==null && time>=bed.nextCareAt) status='available';
     else if (bed.nextCareAt!==null && bed.nextCareAt-time<=5*minute) status='approaching';
     const stage=ready ? 3 : growthProgress<25 ? 0 : growthProgress<55 ? 1 : 2;
-    return {growth, growthProgress, stage, status, missedCareAt:status==='missed'?deadline:null};
+    return {growth, growthProgress, stage, status, lostProgress:ready?0:100*(peak-growth)/bed.growthDuration,
+      missedCareAt:status==='missed'?deadline:null};
   }
   function initial(crop,time,legacy) {
     const bed=plant(crop,time,({matcha:.88,strawberries:.62,blueberries:.92,honey:.4})[crop.id]);
@@ -46,5 +47,10 @@ const Garden = (() => {
     Object.assign(bed,{grown:view.growth,anchor:time,lastCareAt:time,nextCareAt:time+bed.careInterval,missedCareAt:null});
     return true;
   }
-  return {crops,minute,plant,inspect,initial,tend};
+  function seek(bed,percent,time) {
+    if (!Number.isFinite(percent) || percent<0 || percent>100) throw new RangeError('Growth must be between 0 and 100.');
+    Object.assign(bed,{grown:bed.growthDuration*percent/100,anchor:time,lastCareAt:time,
+      nextCareAt:bed.careInterval ? time+bed.careInterval : null,missedCareAt:null});
+  }
+  return {crops,minute,plant,inspect,initial,tend,seek};
 })();

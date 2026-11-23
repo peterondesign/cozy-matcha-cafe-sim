@@ -15,8 +15,20 @@
   const list = $('content'), targets = $('targets'), film = $('gesture');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   let station = 0, review = false, purchase = null, night = false;
-  let filmToken = 0;
   const item = id => MatchaPantry.item(id);
+  try {
+    const saved=JSON.parse(localStorage.getItem('matcha-shelf-pause-position')||'null');
+    localStorage.removeItem('matcha-shelf-pause-position');
+    if(saved && Number.isInteger(saved.station) && saved.station>=0 && saved.station<=till) {
+      station=saved.station;
+      review=saved.review===true;
+      if(Array.isArray(saved.bag)) for(const [id,count] of saved.bag) {
+        if(item(id) && Number.isInteger(count) && count>0) bag.set(id,count);
+      }
+    }
+  } catch(error) { console.warn('Shop position could not be restored.',error); }
+  addEventListener('matcha-pause',()=>localStorage.setItem('matcha-shelf-pause-position',JSON.stringify({station,review,bag:[...bag]})));
+  let filmToken = 0;
   const units = () => [...bag.values()].reduce((a,b)=>a+b,0);
   const cost = () => [...bag].reduce((sum,[id,n])=>sum+item(id)[3]*n,0);
   function el(tag, text, cls) {
@@ -164,14 +176,19 @@
   $('basket').onclick=()=>{stopClip();review=true;$('notice').textContent='';render();};
   $('home').onclick=()=>visit(0);
   $('prev').onclick=()=>visit(station-1);$('next').onclick=()=>visit(station+1);
-  $('light').onclick=()=>{stopClip();night=!night;$('artNight').style.opacity=night?'1':'0';$('light').textContent=night?'Day':'Night';};
+  function syncLighting() {
+    const minutes=MatchaPantry.load().minutes??480;
+    const dark=minutes<360||minutes>=1080;
+    if(night!==dark)stopClip();
+    night=dark;
+    $('artNight').style.opacity=night?'1':'0';
+  }
   addEventListener('keydown',e=>{
     if(e.metaKey||e.altKey||e.ctrlKey||e.repeat)return;
     if(['KeyW','KeyD','ArrowRight','ArrowUp'].includes(e.code)){e.preventDefault();visit(station+1);}
     if(['KeyS','KeyA','ArrowLeft','ArrowDown'].includes(e.code)){e.preventDefault();visit(station-1);}
     if(e.code==='KeyB'&&station!==till){review=!review;render();}
-    if(e.code==='Escape')visit(0);
   });
   new ResizeObserver(frame).observe($('scene'));
-  addEventListener('storage',render);render();
+  addEventListener('storage',()=>{syncLighting();render();});addEventListener('matcha-clock',syncLighting);syncLighting();render();
 })();

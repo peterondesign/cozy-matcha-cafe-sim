@@ -219,10 +219,6 @@ async function loadRigTemplate(THREE, url) {
 
 export async function loadParkAssets(THREE) {
   const base = './characters/test/';
-  const [barista, walker, hiker] = await Promise.all([
-    loadRigTemplate(THREE, `${base}barista-rig.glb`),
-    loadRigTemplate(THREE, `${base}walker-rig.glb`),
-    loadRigTemplate(THREE, `${base}hiker-rig.glb`)
-  ]);
-  return {models: {barista, walker, hiker}};
+  const barista = await loadRigTemplate(THREE, `${base}barista-rig.glb`);
+  return {models: {barista}};
 }

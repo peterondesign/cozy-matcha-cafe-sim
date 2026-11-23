@@ -4,21 +4,32 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>My Garden · Cozy Matcha Café</title>
-  <link rel="stylesheet" href="garden.css">
+  <link rel="icon" href="../brand/favicon-32.png" sizes="32x32">
+  <link rel="stylesheet" href="../shared/hud.css">
+  <link rel="stylesheet" href="../shared/exit.css">
+  <link rel="stylesheet" href="garden.css?v=3">
 </head>
 <body>
-  <header><h1><img src="../assets/garden/sprout.webp" alt="">My Garden</h1><matcha-hud></matcha-hud></header>
-  <main>
+  <header><matcha-hud></matcha-hud></header>
+  <main aria-label="My garden">
+    <h1 class="sr-only">My Garden</h1>
+    <div class="garden-sign" aria-hidden="true"><img src="../assets/garden/sprig.webp" alt=""><span>My Garden</span><img src="../assets/garden/sprig.webp" alt=""></div>
     <section id="beds" aria-label="Garden beds"></section>
-    <details id="journal"><summary>Garden journal &amp; beehive</summary>
-      <p id="summary"></p><div id="apiary"></div>
-    </details>
-    <fieldset id="dev" hidden><legend>Practice garden</legend></fieldset>
   </main>
-  <footer><a id="leave" href="../park/"><img src="../assets/garden/sprig.webp" alt=""><span><img src="../assets/garden/exit.webp" alt="">Exit Garden</span><img src="../assets/garden/sprig.webp" alt=""></a></footer>
-  <output id="notice" aria-live="polite"></output>
-  <script src="../shared/world-hud.js"></script>
+  <section id="care-panel" class="care-panel" aria-label="Selected garden bed" hidden>
+    <img id="care-icon" alt="">
+    <div class="care-copy"><span id="care-stage"></span><h2 id="care-name"></h2><p id="care-message"></p></div>
+    <button id="care-action" type="button"></button>
+  </section>
+  <aside class="pantry-preview" aria-label="Garden pantry">
+    <h2>Pantry</h2><div id="pantry-items"></div>
+  </aside>
+  <footer><matcha-exit href="../park/" label="Exit Garden"></matcha-exit></footer>
+  <output id="notice" role="status" aria-live="polite"></output>
+  <script src="../shared/audio-bus.js?v=2"></script>
+  <script src="../shared/world-hud.js?v=3"></script>
+  <script src="../shared/exit.js"></script>
   <script src="../shared/pantry.js"></script>
   <script src="garden-model.js"></script>
-  <script src="garden.js"></script>
+  <script src="garden.js?v=3"></script>
 </body></html>

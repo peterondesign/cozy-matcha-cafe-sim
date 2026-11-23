@@ -1,26 +1,117 @@
-import {CELL_REGISTRY,cellAt,nearestNavigationCell,routeCells,isWalkableCell} from './scene-map.js';
-import {loadParkAssets} from './gltf-pipeline.js';
+import {CELL_REGISTRY,LANDMARKS,cellAt,routeCells,isWalkableCell,nearestLandmark} from './scene-map.js?v=6';
+import {loadParkAssets} from './gltf-pipeline.js?v=2';
+import {walkCycleFrame} from './animation.js';
+import {VISITOR_PATHS,sampleVisitorPath,visitorTarget,findViewEntry} from './visitor-paths.js?v=5';
+import {FOREGROUND_POLYGONS,occludesActor,polygonBounds} from './scene-occlusion.js?v=4';
+import {resolveSprite,spriteFrame,facingDirection,playerActionKey} from '../shared/sprite-actions.js';
 
 const canvas=document.querySelector('#park'), ctx=canvas.getContext('2d');
 const figureCanvas=document.querySelector('#figures');
-const canopy=document.querySelector('#canopy'), canopyCtx=canopy?canopy.getContext('2d'):null;
+const characterCanvas=document.querySelector('#character-sprites'),characterCtx=characterCanvas.getContext('2d');
 const status=document.querySelector('output');
+const loading=document.querySelector('#park-loading'),loadingProgress=document.querySelector('#park-loading-progress');
+const loadingLabel=document.querySelector('#park-loading-label');
+function setLoadingProgress(value,label){loadingProgress.value=value;loadingLabel.textContent=label}
+let loadingWork=0,backgroundError='';
+function advanceLoading(amount,label){loadingWork+=amount;setLoadingProgress(loadingWork,label)}
 async function load(file){const img=new Image();img.src=file;await img.decode();return img}
-const [day,night,matArt]=await Promise.all(['world-day.jpg','world-night.jpg','yoga-mat.png'].map(load)).catch(error=>{status.textContent='Park artwork could not load. Refresh to retry.';throw error});
-const overlayData=await fetch('overlays/manifest.json').then(r=>r.json()).catch(()=>[]);
-for(const spec of overlayData)spec.img=await load(spec.file);
-const benches=[
- {id:'bench-w',x:1226,y:136,yaw:0.72,sitX:1226,sitY:158},
- {id:'bench-n',x:1378,y:118,yaw:0.08,sitX:1378,sitY:138},
- {id:'bench-e',x:1470,y:132,yaw:-0.38,sitX:1470,sitY:152}
-];
-const yogaMat={x:1040,y:640,yaw:0.12,w:196,h:92};
-const gardenShortcut=document.createElement('a');gardenShortcut.href='../garden/';gardenShortcut.textContent='Garden';gardenShortcut.style.cssText='background:#dce9b4;color:#49351f;border:3px double #9e7b48;border-radius:13px;padding:8px;text-decoration:none;font:bold 15px Georgia';document.querySelector('header')?.append(gardenShortcut);
-let blend=0,blendTarget=0,x=824,y=859,last=0,testAction='normal',actionAt=0,walkVel=0,faceX=0,faceY=1,benchYaw=0;
+const spriteManifestUrl=new URL('../rigging-test/action-assets.json?v=2',import.meta.url);
+const spriteImages=new Map();
+async function loadSpriteSheet(url,sheet,action,character){
+ const image=await load(url);
+ if(image.width%sheet.columns||image.height%sheet.rows)throw new Error(`Invalid sprite dimensions: ${action}:${character}`);
+ const cellWidth=image.width/sheet.columns,cellHeight=image.height/sheet.rows;
+ const scale=Math.min(1,320/cellWidth);
+ const compact=document.createElement('canvas');
+ compact.width=Math.round(cellWidth*scale)*sheet.columns;
+ compact.height=Math.round(cellHeight*scale)*sheet.rows;
+ compact.getContext('2d').drawImage(image,0,0,compact.width,compact.height);
+ return compact;
+}
+async function loadCharacterSprites(manifest,character,walkingOnly=false){
+ const sprites=new Map();
+ const actions=[...new Set([...Object.keys(manifest),'walk_left'])];
+ await Promise.all(actions.map(async action=>{
+  if(walkingOnly&&!action.startsWith('walk_'))return;
+  const sprite=resolveSprite(manifest,action,character);
+  if(!sprite)return;
+  if(!sprite.sheet)throw new Error(`Park sprite ${action}:${character} must be a sprite sheet.`);
+  if(!/^[^/\\]+\.png$/i.test(sprite.file))throw new Error(`Invalid park sprite source: ${sprite.file}`);
+  const url=new URL(`sprites/${sprite.file.replace(/\.png$/i,'.webp')}`,import.meta.url).href;
+  if(!spriteImages.has(url))spriteImages.set(url,loadSpriteSheet(url,sprite.sheet,action,character));
+  const image=await spriteImages.get(url);
+  sprites.set(action,{...sprite,image});
+ }));
+ return sprites;
+}
+const T=globalThis.MatchaThree;
+if(!T)throw new Error('The park 3D renderer could not load.');
+const initialNight=clockNightMix(MatchaWorld.clock.read().minutes??480)>=.5;
+const artPromise=load(initialNight?'world-night.webp':'world-day.webp').then(image=>{
+ advanceLoading(40,'Loading park artwork');return image;
+}).catch(error=>{status.textContent='Park artwork could not load. Refresh to retry.';throw error});
+const spritesPromise=(async()=>{
+ const response=await fetch(spriteManifestUrl);
+ if(!response.ok)throw new Error(`Sprite manifest: HTTP ${response.status}`);
+ const manifest=await response.json();
+ advanceLoading(3,'Preparing characters');
+ const playerSprites=await loadCharacterSprites(manifest,'barista');
+ advanceLoading(54,'Loading characters');
+ return {manifest,playerSprites};
+})().catch(error=>{
+ status.textContent='Character sprites could not load. Refresh to retry.';
+ throw error;
+});
+const [initialArt,{manifest,playerSprites}]=await Promise.all([artPromise,spritesPromise]);
+let day=initialNight?null:initialArt,night=initialNight?initialArt:null;
+const visitorSprites=new Array(6);
+const foreground=FOREGROUND_POLYGONS.map(spec=>({...spec,...polygonBounds(spec.points)}));
+function prepareForeground(spec){
+ try{
+  const mask=document.createElement('canvas');
+  mask.width=spec.w;mask.height=spec.h;
+  const maskCtx=mask.getContext('2d');
+  maskCtx.filter='blur(2px)';
+  maskCtx.beginPath();
+  spec.points.forEach(([px,py],index)=>index?maskCtx.lineTo(px-spec.x,py-spec.y):maskCtx.moveTo(px-spec.x,py-spec.y));
+  maskCtx.closePath();maskCtx.lineWidth=2;maskCtx.stroke();maskCtx.fill();
+  for(const [name,art] of [['dayLayer',day||night],['nightLayer',night||day]]){
+   const layer=document.createElement('canvas');
+   layer.width=spec.w;layer.height=spec.h;
+   const layerCtx=layer.getContext('2d');
+   layerCtx.drawImage(art,spec.x*art.width/2048,spec.y*art.height/1152,
+    spec.w*art.width/2048,spec.h*art.height/1152,0,0,spec.w,spec.h);
+   layerCtx.globalCompositeOperation='destination-in';
+   layerCtx.drawImage(mask,0,0);
+   spec[name]=layer;
+  }
+ }catch(error){
+  status.textContent='Park foreground could not load. Refresh to retry.';
+  throw error;
+ }
+}
+let blend=0,blendTarget=0,x=824,y=859,last=0,testAction='normal',actionAt=0,walkVel=0,faceX=0,faceY=1,hanaFacingLeft=false;
 const hintEl=document.querySelector('#hint');
+const playerMarker=document.querySelector('#player-marker');
+const waveReward=document.querySelector('#wave-reward');
 let clickGoal=null,nearSpot=null,view={cx:0,cy:0,zoom:1};
 let parkDog=null;
 let animationTime=0;
+let hanaWalkDistance=0;
+let hanaDirection='down';
+let waveFacing='down';
+let rewardAt=-Infinity;
+let trafficCheckAt=0;
+function currentFacing(){return hanaDirection==='side'?(hanaFacingLeft?'left':'right'):hanaDirection}
+function currentSprite(){
+ const action=playerActionKey(testAction,null,waveFacing);
+ return playerSprites.get(action||`walk_${currentFacing()}`)||
+  (testAction==='wave'?playerSprites.get('wave_down'):null)||null;
+}
+function actionDuration(fallback){
+ const sheet=currentSprite()?.sheet;
+ return sheet&&sheet.playback==='once'?sheet.frames/sheet.fps*1000:fallback;
+}
 function clockNightMix(minutes){
  const value=Number(minutes),minuteOfDay=((Number.isFinite(value)?value:480)%1440+1440)%1440;
  const hour=minuteOfDay/60;
@@ -33,35 +124,24 @@ function syncClockLighting(){
  try{state=JSON.parse(localStorage.getItem('matchaVisualState')||'{}')||{}}
  catch(error){console.warn('Park clock state could not be read.',error)}
  blendTarget=clockNightMix(state.minutes??480);
- document.querySelector('matcha-hud')?.refresh();
 }
 syncClockLighting();
+blend=blendTarget;
 window.addEventListener('storage',syncClockLighting);
 window.addEventListener('matcha-stock',syncClockLighting);
-setInterval(syncClockLighting,1000);
-function seatedNow(){return testAction==='sit-bench'||testAction==='sit-start-bench'||testAction==='sit-mat'||testAction==='sit-start-mat'||testAction==='stretch-mat'}
+window.addEventListener('matcha-clock',syncClockLighting);
 function setAction(next){
- testAction=next==='sit-bench'?'sit-start-bench':next==='sit-mat'?'sit-start-mat':next;
+ testAction=next;
  actionAt=animationTime;
- if(next==='sit-bench'){
-  const b=nearestBench();
-  x=b.sitX;y=b.sitY;
- }
- if(next==='sit-mat'||next==='stretch-mat'){x=yogaMat.x;y=yogaMat.y+10}
-}
-function standUp(){
- if(!seatedNow())return;
- const from=testAction;
- setAction(from.includes('bench')?'up-bench':'up-mat');
-}
-function nearestBench(){
- let best=benches[0],bestD=1e9;
- for(const bench of benches){const d=Math.hypot(bench.x-x,bench.y-y);if(d<bestD){bestD=d;best=bench}}
- return best;
 }
 const keys=new Set(), touches=new Map();
 const mapping={w:'up',a:'left',s:'down',d:'right',ArrowUp:'up',ArrowLeft:'left',ArrowDown:'down',ArrowRight:'right'};
 onkeydown=e=>{
+ if(e.target instanceof Element&&e.target.closest('input,textarea,select,button,summary'))return;
+ if(e.key.toLowerCase()==='c'){
+  if(!e.repeat)callDog();
+  return;
+ }
  if(e.key.toLowerCase()==='e'){
   e.preventDefault();
   if(!e.repeat&&nearSpot)nearSpot.go();
@@ -79,42 +159,107 @@ function allowed(a,b){
  return isWalkableCell(a,b);
 }
 try{
- const savedPosition=JSON.parse(localStorage.getItem('matcha-garden-player-position')||'null');
+ const savedPosition=JSON.parse(localStorage.getItem('matcha-park-pause-position')||localStorage.getItem('matcha-garden-player-position')||'null');
+ localStorage.removeItem('matcha-park-pause-position');
  localStorage.removeItem('matcha-garden-player-position');
- if(savedPosition&&allowed(savedPosition.x,savedPosition.y)){x=savedPosition.x;y=savedPosition.y}
-}catch{}
-function clearOf(a,b,self,pad=32){
- if(!self)return true;
- for(const person of visitors){
-  if(person===self||!person.active)continue;
-  const nextDistance=Math.hypot(person.x-a,person.y-b);
-  if(nextDistance>=pad)continue;
-  const currentDistance=Math.hypot(person.x-self.x,person.y-self.y);
-  if(nextDistance<=currentDistance+0.001)return false;
+ if(savedPosition&&allowed(savedPosition.x,savedPosition.y)){
+  x=savedPosition.x;y=savedPosition.y;
+  if(['up','down','side'].includes(savedPosition.direction))hanaDirection=savedPosition.direction;
+  hanaFacingLeft=savedPosition.facingLeft===true;
  }
- return true;
-}
-const spots=[
- {id:'garden',x:760,y:920,r:230,label:'Enter Garden',go:()=>{localStorage.setItem('matcha-garden-return','../park/');localStorage.setItem('matcha-garden-player-position',JSON.stringify({x,y}));location.href='../garden/'}},
- {id:'mat',x:yogaMat.x,y:yogaMat.y,r:92,label:'Sit on yoga mat',kind:'sit',go:()=>setAction('sit-mat')},
- ...benches.map(bench=>({id:bench.id,x:bench.x,y:bench.y,r:78,label:'Sit on bench',kind:'sit',go:()=>{const b=nearestBench();x=b.sitX;y=b.sitY;benchYaw=b.yaw;setAction('sit-bench')}})),
- {id:'shop',x:1660,y:580,r:96,label:'Village Grocer',go:()=>{location.href='../grocer/'}}
-];
+}catch(error){console.warn('Park position could not be restored.',error)}
+window.addEventListener('matcha-pause',()=>localStorage.setItem('matcha-park-pause-position',JSON.stringify({x,y,direction:hanaDirection,facingLeft:hanaFacingLeft})));
 function closestSpot(){
- if(seatedNow())return null;
- const garden=spots[0];
- if(Math.hypot(garden.x-x,garden.y-y)<garden.r)return garden;
- let best=null,bestD=1e9;
- for(const spot of spots){
-  const d=Math.hypot(spot.x-x,spot.y-y);
-  if(d<spot.r&&d<bestD){best=spot;bestD=d}
- }
+ if(testAction==='wave')return null;
+ const landmark=nearestLandmark(x,y);
+ let best=landmark&&{...landmark,go:()=>{
+  const position=JSON.stringify({x,y,direction:hanaDirection,facingLeft:hanaFacingLeft});
+  if(landmark.id==='garden'){
+   localStorage.setItem('matcha-garden-return','../park/');
+   localStorage.setItem('matcha-garden-player-position',position);
+  }else localStorage.setItem('matcha-park-pause-position',position);
+  location.href=landmark.href;
+ }};
+ const bestD=landmark?Math.hypot(landmark.x-x,landmark.y-y):Infinity;
  const pal=visitors.find(person=>person.active&&Math.hypot(person.x-x,person.y-y)<78);
  if(pal){
   const d=Math.hypot(pal.x-x,pal.y-y);
-  if(d<bestD)best={id:'wave-'+pal.guest,x:pal.x,y:pal.y-8,r:78,label:'Wave to '+pal.guest,go:()=>{setAction('wave');pal.waveUntil=animationTime+2800}};
+  if(d<bestD)best={id:'wave-'+pal.guest,x:pal.x,y:pal.y-8,r:78,label:'Wave to '+pal.guest,go:()=>{
+   if(testAction==='wave')return;
+   faceX=pal.x-x;faceY=pal.y-y;waveFacing=facingDirection(faceX,faceY);
+   hanaDirection=waveFacing==='left'||waveFacing==='right'?'side':waveFacing;hanaFacingLeft=waveFacing==='left';
+   setAction('wave');
+  }};
  }
  return best;
+}
+function drawCharacters({cx,cy,cw,ch,w,h,dpr,zoom,travel}){
+ if(characterCanvas.width!==Math.round(w*dpr)||characterCanvas.height!==Math.round(h*dpr)){
+  characterCanvas.width=Math.round(w*dpr);characterCanvas.height=Math.round(h*dpr);
+ }
+ characterCtx.setTransform(dpr*zoom,0,0,dpr*zoom,-cx*dpr*zoom,-cy*dpr*zoom);
+ characterCtx.clearRect(cx-2,cy-2,cw+4,ch+4);
+ if(travel>.35)hanaWalkDistance+=travel;
+ else hanaWalkDistance=0;
+ const actors=[{x,y,player:true},...visitors.filter(person=>person.visibility>0)].sort((a,b)=>a.y-b.y);
+ for(const actor of actors){
+  if(actor.x<cx-180||actor.x>cx+cw+180||actor.y<cy-20||actor.y>cy+ch+220)continue;
+  const action=actor.player?playerActionKey(testAction,null,waveFacing):null;
+  const sprite=actor.player?currentSprite():actor.sprites.get(`walk_${facingDirection(actor.vx,actor.vy)}`);
+  if(!sprite){
+   if(actor.player)drawForeground(actor,{left:x-120,right:x+120,top:y-170,bottom:y+15});
+   continue;
+  }
+  const {sheet,image,flipX}=sprite;
+  const frame=actor.player
+   ?action?spriteFrame(sheet,Math.max(0,animationTime-actionAt))
+    :travel>.35?walkCycleFrame(hanaWalkDistance,sheet.frames,130):sheet.idleFrame
+   :walkCycleFrame(actor.distance,sheet.frames,130);
+  const cellWidth=image.width/sheet.columns,cellHeight=image.height/sheet.rows;
+  const sourceX=frame%sheet.columns*cellWidth,sourceY=Math.floor(frame/sheet.columns)*cellHeight;
+  const height=actor.player?116:116*npcSettings.height/100;
+  const scale=height/(cellHeight*sheet.heightFraction),destWidth=cellWidth*scale,destHeight=cellHeight*scale;
+  characterCtx.save();
+  characterCtx.globalAlpha=actor.player?1:actor.opacity;
+  characterCtx.translate(actor.x,0);
+  characterCtx.scale(flipX?-1:1,1);
+  characterCtx.drawImage(image,sourceX,sourceY,cellWidth,cellHeight,
+   -sheet.anchor[0]*destWidth,actor.y-sheet.anchor[1]*destHeight,destWidth,destHeight);
+  characterCtx.restore();
+  const left=actor.x-(flipX?1-sheet.anchor[0]:sheet.anchor[0])*destWidth;
+  const top=actor.y-sheet.anchor[1]*destHeight;
+  drawForeground(actor,{left,right:left+destWidth,top,bottom:top+destHeight});
+ }
+}
+function drawForeground(actor,bounds){
+ for(const spec of foreground){
+  if(!occludesActor(spec,actor,bounds))continue;
+  if(!spec.dayLayer)prepareForeground(spec);
+  characterCtx.save();
+  characterCtx.beginPath();
+  characterCtx.rect(bounds.left,bounds.top,bounds.right-bounds.left,bounds.bottom-bounds.top);
+  characterCtx.clip();
+  let layer=blend<.001?spec.dayLayer:blend>.999?spec.nightLayer:null;
+  if(!layer){
+   if(!spec.blendLayer){
+    spec.blendLayer=document.createElement('canvas');
+    spec.blendLayer.width=spec.w;spec.blendLayer.height=spec.h;
+   }
+   if(spec.blendValue!==blend){
+    const blendCtx=spec.blendLayer.getContext('2d');
+    blendCtx.clearRect(0,0,spec.w,spec.h);
+    blendCtx.globalCompositeOperation='source-over';blendCtx.globalAlpha=1-blend;
+    blendCtx.drawImage(spec.dayLayer,0,0);
+    blendCtx.globalCompositeOperation='lighter';blendCtx.globalAlpha=blend;
+    blendCtx.drawImage(spec.nightLayer,0,0);
+    blendCtx.globalAlpha=1;blendCtx.globalCompositeOperation='source-over';
+    spec.blendValue=blend;
+   }
+   layer=spec.blendLayer;
+  }
+  characterCtx.drawImage(layer,spec.x,spec.y);
+  characterCtx.restore();
+ }
 }
 function worldFromEvent(event){
  const box=canvas.getBoundingClientRect();
@@ -123,7 +268,6 @@ function worldFromEvent(event){
 canvas.addEventListener('pointerdown',event=>{
  if(event.button)return;
  const point=worldFromEvent(event);
- if(seatedNow())standUp();
  if(!allowed(point.x,point.y)){status.textContent='Cannot walk there';return}
  clickGoal={x:point.x,y:point.y,at:performance.now()};
  status.textContent='Walking there';
@@ -136,138 +280,62 @@ hintEl?.addEventListener('click',event=>{
 function tick(now){
  const dt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;
  animationTime+=dt*1000;
- if((testAction==='sit-start-bench'||testAction==='sit-start-mat')&&animationTime-actionAt>320){
-  testAction=testAction==='sit-start-bench'?'sit-bench':'sit-mat';actionAt=animationTime;
+ if(testAction==='wave'&&animationTime-actionAt>=actionDuration(1600)){
+  const state=MatchaWorld.clock.read();
+  const gems=state.gems??0;
+  if(!Number.isFinite(gems))throw new Error('Invalid gem balance.');
+  state.gems=gems+1;
+  localStorage.setItem('matchaVisualState',JSON.stringify(state));
+  window.dispatchEvent(new Event('matcha-stock'));
+  waveReward.textContent='+1 gem';
+  rewardAt=animationTime;
+  setAction('normal');
  }
- if((testAction==='up-bench'||testAction==='up-mat')&&animationTime-actionAt>520)setAction('normal');
- if(testAction==='wave'&&animationTime-actionAt>1600)setAction('normal');
- if(testAction==='sit-mat'&&animationTime-actionAt>3600){testAction='stretch-mat';actionAt=animationTime}
- else if(testAction==='stretch-mat'&&animationTime-actionAt>4800){testAction='sit-mat';actionAt=animationTime}
  const active=new Set([...keys,...touches.values()]);
  let dx=Number(active.has('right'))-Number(active.has('left')),dy=Number(active.has('down'))-Number(active.has('up'));
  let len=Math.hypot(dx,dy);const stairs=x>475&&x<737&&y>388&&y<484;
  if(len)clickGoal=null;
- if((len||clickGoal)&&seatedNow())standUp();
- const sitting=seatedNow()||testAction==='up-bench'||testAction==='up-mat';
- const want=sitting||!len&&!clickGoal?0:stairs?96:148;
+ const busy=testAction==='wave';
+ const want=busy||!len&&!clickGoal?0:stairs?96:148;
  const ease=want>walkVel?260:340;
  if(walkVel<want)walkVel=Math.min(want,walkVel+ease*dt);
  else walkVel=Math.max(want,walkVel-ease*dt);
  const speed=walkVel,beforeX=x,beforeY=y;
- const stroll=46;
  for(const person of visitors){
-  if(!person.active){
-   if(animationTime>=person.respawnAt)respawnVisitor(person);
-   else continue;
+  person.visibility=Math.max(0,Math.min(1,person.visibility+(person.active?1:-1)*dt*1.5));
+  if(person.visibility===0)continue;
+  const previousLeg=Math.floor(person.distance/person.path.length);
+  person.distance+=npcSettings.speed*dt;
+  if(Math.floor(person.distance/person.path.length)!==previousLeg){
+   const next=visitorNames.map((name,index)=>(person.character+index+1)%visitorNames.length)
+    .find(index=>visitorSprites[index]&&!visitors.some(other=>other!==person&&other.character===index));
+   person.character=next;
+   person.guest=visitorNames[next];
+   person.sprites=visitorSprites[next];
   }
-  if(person.actionUntil){
-   if(animationTime<person.actionUntil){
-    if(person.goalState==='WALK_DOG'){
-     person.dogWalkAngle+=dt*.75*person.dogWalkDirection;
-     const radius=30,center=person.dogWalkCenter;
-     const targetX=center.x+Math.cos(person.dogWalkAngle)*radius;
-     const targetY=center.y+Math.sin(person.dogWalkAngle)*radius;
-     const dx=targetX-person.x,dy=targetY-person.y,distance=Math.hypot(dx,dy)||1;
-     const step=Math.min(stroll*dt,distance),nx=person.x+dx/distance*step,ny=person.y+dy/distance*step;
-     if(allowed(nx,ny)&&clearOf(nx,ny,person,36)){
-      person.x=nx;person.y=ny;person.vx=dx/distance;person.vy=dy/distance;person.moving=true;
-     }else{
-      person.dogWalkDirection*=-1;person.moving=false;person.vx=0;person.vy=0;
-     }
-    }else{
-     person.vx=0;person.vy=0;person.moving=false;
-    }
-    continue;
-   }
-   finishVisitorAction(person);
-  }
-  const goal=person.route[person.at];
-  if(!goal){
-   person.vx=0;person.vy=0;person.moving=false;person.stuck=(person.stuck||0)+dt;
-   if(person.stuck>.5){routeVisitorAroundObstacle(person);person.stuck=0}
-   continue;
-  }
-  const gx=goal[0]-person.x,gy=goal[1]-person.y;
-  const dist=Math.hypot(gx,gy);
-  const step=stroll*dt;
-  if(dist<=step+6){
-   person.x=goal[0];person.y=goal[1];
-   person.vx=0;person.vy=0;person.moving=false;person.stuck=0;
-   if(person.at===person.route.length-1){
-    if(person.goalState==='TRANSIT_TO_EXIT'||person.goalState==='EXITING'){
-     person.active=false;
-     person.respawnAt=animationTime+3500+person.id*700;
-     if(parkDog?.owner===person)parkDog.active=false;
-    }else beginVisitorAction(person,animationTime);
-    continue;
-   }
-   person.at++;
-   continue;
-  }
-  let ux=gx/dist,uy=gy/dist;
-  let separateX=0,separateY=0;
-  for(const other of visitors){
-   if(other===person||!other.active)continue;
-   const sx=person.x-other.x,sy=person.y-other.y,sd=Math.hypot(sx,sy);
-   if(sd<54){
-    if(sd>0.001){
-     const force=(54-sd)/54;
-     separateX+=sx/sd*force;separateY+=sy/sd*force;
-    }else{
-     const low=Math.min(person.id,other.id),high=Math.max(person.id,other.id);
-     const angle=(low*31+high*17)*2.399963;
-     const direction=person.id<other.id?-1:1;
-     separateX+=Math.cos(angle)*direction;separateY+=Math.sin(angle)*direction;
-    }
-   }
-  }
-  const steeringX=ux+separateX*1.35,steeringY=uy+separateY*1.35,steeringLength=Math.hypot(steeringX,steeringY)||1;
-  ux=steeringX/steeringLength;uy=steeringY/steeringLength;
-  const side=(person.id%2?1:-1)*(person.detourSign||1);
-  const candidates=[
-   [ux,uy],
-   [(ux-uy*.8*side),(uy+ux*.8*side)],
-   [(ux+uy*.8*side),(uy-ux*.8*side)],
-   [ux,-uy],[0,uy],[ux,0]
-  ];
-  let moved=false;
-  for(const [cx,cy] of candidates){
-   const length=Math.hypot(cx,cy)||1,nx=person.x+cx/length*step,ny=person.y+cy/length*step;
-   if(allowed(nx,ny)&&clearOf(nx,ny,person,36)){
-    person.x=nx;person.y=ny;person.vx=cx/length;person.vy=cy/length;person.moving=true;person.stuck=0;moved=true;break;
-   }
-  }
-  if(!moved){
-   person.stuck=(person.stuck||0)+dt;
-   person.vx=0;person.vy=0;person.moving=false;
-   if(person.stuck>.45){
-    const nudge=person.stuck>.9?Math.min(step*3,30):Math.min(step*1.5,16);
-    const nx=person.x-uy*nudge*side,ny=person.y+ux*nudge*side;
-    if(allowed(nx,ny)&&clearOf(nx,ny,person,36)){
-     person.x=nx;person.y=ny;person.vx=-uy*side;person.vy=ux*side;person.moving=true;person.stuck=0;
-    }
-    if(person.stuck>1.2){routeVisitorAroundObstacle(person);person.stuck=0}
-   }
-  }
+  Object.assign(person,sampleVisitorPath(person.path,person.distance));
+  person.opacity*=person.visibility;
+  person.y+=npcSettings.offset;
+  person.moving=npcSettings.speed>0;
  }
  if(!len&&clickGoal&&speed>8){
   const gx=clickGoal.x-x,gy=clickGoal.y-y,gd=Math.hypot(gx,gy);
   if(gd<14)clickGoal=null;
   else {dx=gx/gd;dy=gy/gd;len=1}
  }
- if(len&&speed>4&&!sitting){
+ if(len&&speed>4&&!busy){
   const mx=dx*dt*speed/(len||1),my=dy*dt*speed*.82/(len||1);
   if(allowed(x+mx,y))x+=mx;
   if(allowed(x,y+my))y+=my;
   faceX=dx;faceY=dy;
+  hanaDirection=Math.abs(dx)>Math.abs(dy)?'side':dy<0?'up':'down';
+  if(Math.abs(dx)>.05)hanaFacingLeft=dx<0;
   if(clickGoal&&Math.hypot(clickGoal.x-x,clickGoal.y-y)<14)clickGoal=null;
  }
  stepDog(dt);
  const travel=Math.hypot(x-beforeX,y-beforeY);
  if(clickGoal)status.textContent='Walking there';
- else status.textContent=len&&!travel&&!sitting?'Cannot walk there':stairs?'Stone steps':'';
- const nearFriend=visitors.find(person=>person.active&&Math.hypot(person.x-x,person.y-y)<86);
- if(testAction==='wave'&&nearFriend&&(!nearFriend.waveUntil||animationTime>nearFriend.waveUntil))nearFriend.waveUntil=animationTime+2800;
+ else status.textContent=backgroundError||(len&&!travel&&!busy?'Cannot walk there':stairs?'Stone steps':'');
  nearSpot=closestSpot();
  if(hintEl){
   hintEl.hidden=!nearSpot;
@@ -278,11 +346,42 @@ function tick(now){
  const zoom=Math.max(w/2048,h/1152),cw=w/zoom,ch=h/zoom;
  const cx=Math.max(0,Math.min(2048-cw,x-cw/2)),cy=Math.max(0,Math.min(1152-ch,y-ch/2));
  view={cx,cy,zoom};
+ if(now>=trafficCheckAt&&npcSettings.speed>0){
+  trafficCheckAt=now+1000;
+  const bounds={cx,cy,cw,ch};
+  const onScreen=person=>person.x>=cx&&person.x<=cx+cw&&person.y>=cy&&person.y<=cy+ch;
+  const activeVisitors=visitors.filter(person=>person.active);
+  for(const person of activeVisitors){
+   if(onScreen(person)||person.approachView&&
+      Math.hypot(person.approachView.cx-cx,person.approachView.cy-cy)>Math.min(cw,ch)/4)person.approachView=null;
+  }
+  if(!activeVisitors.some(person=>onScreen(person)&&person.opacity>.05)&&!activeVisitors.some(person=>person.approachView)){
+   for(const person of activeVisitors){
+    if(person.x>=cx-150&&person.x<=cx+cw+150&&person.y>=cy-150&&person.y<=cy+ch+150)continue;
+    const distance=findViewEntry(person.path,bounds,npcSettings.offset);
+    if(distance===null)continue;
+    person.distance=distance;
+    Object.assign(person,sampleVisitorPath(person.path,distance));
+    person.y+=npcSettings.offset;
+    person.approachView=bounds;
+    break;
+   }
+  }
+ }
+ playerMarker.style.left=(x-cx)*zoom+'px';
+ playerMarker.style.top=(y-130-cy)*zoom+'px';
+ const rewardProgress=(animationTime-rewardAt)/1400;
+ waveReward.hidden=rewardProgress>=1;
+ if(!waveReward.hidden){
+  waveReward.style.left=(x-cx)*zoom+'px';
+  waveReward.style.top=(y-150-cy)*zoom-22*rewardProgress+'px';
+  waveReward.style.opacity=String(Math.min(1,(1-rewardProgress)*3));
+ }
  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
  blend=reduce?blendTarget:blend+(blendTarget-blend)*(1-Math.exp(-dt*1.6));
  ctx.setTransform(dpr*zoom,0,0,dpr*zoom,-cx*dpr*zoom,-cy*dpr*zoom);
- ctx.globalAlpha=1;ctx.drawImage(day,0,0,2048,1152);
- ctx.globalAlpha=blend;ctx.drawImage(night,0,0,2048,1152);ctx.globalAlpha=1;
+ ctx.globalAlpha=1;ctx.drawImage(day||night,0,0,2048,1152);
+ if(blend>0.001){ctx.globalAlpha=blend;ctx.drawImage(night||day,0,0,2048,1152);ctx.globalAlpha=1}
  if(blend>.02){
   const lamps=[[996,124],[866,927],[1114,821],[632,576],[654,1082]];
   ctx.globalCompositeOperation='screen';
@@ -294,22 +393,37 @@ function tick(now){
   }
   ctx.globalCompositeOperation='source-over';
  }
- ctx.drawImage(matArt,yogaMat.x-yogaMat.w/2,yogaMat.y-yogaMat.h/2,yogaMat.w,yogaMat.h);
- const onMatNow=testAction==='sit-mat'||testAction==='sit-start-mat'||testAction==='stretch-mat'||testAction==='up-mat';
- ctx.fillStyle=onMatNow?'#2a24184a':'#322e2828';
- ctx.beginPath();ctx.ellipse(x,y+(onMatNow?6:2),onMatNow?16:9,onMatNow?6:3.2,0,0,7);ctx.fill();
+ ctx.save();
+ ctx.lineJoin='round';ctx.lineCap='round';
+ const outlinePulse=reduce?0.65:0.65+0.35*Math.sin(now/700);
+ const gold=ctx.createLinearGradient(0,200,0,950);
+ gold.addColorStop(0,'#fff1a7');gold.addColorStop(.5,'#e7ad3e');gold.addColorStop(1,'#fff0a0');
+ ctx.strokeStyle=gold;ctx.lineWidth=3+outlinePulse;
+ ctx.shadowColor='#ffd873';ctx.shadowBlur=7+outlinePulse*7;
+ ctx.globalAlpha=.72+outlinePulse*.25;
+ for(const landmark of LANDMARKS){
+  ctx.beginPath();
+  landmark.outline.forEach(([px,py],index)=>index?ctx.lineTo(px,py):ctx.moveTo(px,py));
+  ctx.closePath();ctx.stroke();
+ }
+ ctx.restore();
+ ctx.fillStyle='#322e2828';
+ ctx.beginPath();ctx.ellipse(x,y+2,9,3.2,0,0,7);ctx.fill();
  if(parkDog?.active){
   ctx.fillStyle='#322e2830';ctx.beginPath();ctx.ellipse(parkDog.x,parkDog.y+3,17,5,0,0,7);ctx.fill();
  }
  for(const person of visitors){
-  if(!person.active)continue;
+  if(!person.visibility||person.x<cx-100||person.x>cx+cw+100||person.y<cy-20||person.y>cy+ch+180)continue;
   ctx.fillStyle='#322e2828';
+  ctx.globalAlpha=person.opacity;
   ctx.beginPath();ctx.ellipse(person.x,person.y+2,11,3.6,0,0,7);ctx.fill();
   if(Math.hypot(person.x-x,person.y-y)>54){
    ctx.textAlign='center';ctx.font='700 13px Georgia,serif';
-   ctx.lineWidth=3;ctx.strokeStyle='#5a3d1ecc';ctx.strokeText(person.guest,person.x,person.y-125);
-   ctx.fillStyle='#fff6dc';ctx.fillText(person.guest,person.x,person.y-125);
+   const labelY=person.y-116*npcSettings.height/100-9;
+   ctx.lineWidth=3;ctx.strokeStyle='#5a3d1ecc';ctx.strokeText(person.guest,person.x,labelY);
+   ctx.fillStyle='#fff6dc';ctx.fillText(person.guest,person.x,labelY);
   }
+  ctx.globalAlpha=1;
  }
  if(clickGoal){
   const pulse=0.65+Math.sin(now/180)*0.35;
@@ -327,82 +441,56 @@ function tick(now){
   hintEl.style.top=(nearSpot.y-cy)*zoom+'px';
  }
  drawFigures({cx,cy,cw,ch,w,h,dpr,zoom,blend,travel,walkVel,now,dt});
- if(canopy&&canopyCtx){
-  if(canopy.width!==canvas.width||canopy.height!==canvas.height){canopy.width=canvas.width;canopy.height=canvas.height}
-  canopyCtx.setTransform(dpr*zoom,0,0,dpr*zoom,-cx*dpr*zoom,-cy*dpr*zoom);
-  canopyCtx.clearRect(cx-2,cy-2,cw+4,ch+4);
-  const bodies=[{x,y},...visitors.filter(person=>person.active)];
-  for(const spec of overlayData){
-   if(!spec.img)continue;
-   const behind=bodies.some(body=>body.x>spec.x&&body.x<spec.x+spec.w&&body.y>spec.y&&body.y<spec.sortY);
-   if(!behind)continue;
-   canopyCtx.drawImage(spec.img,spec.x,spec.y,spec.w,spec.h);
-  }
+ if(!currentSprite())ensureRenderer();
+ drawCharacters({cx,cy,cw,ch,w,h,dpr,zoom,travel});
+ if(!loading.hidden){
+  setLoadingProgress(100,'Park ready');loading.hidden=true;
+  setTimeout(()=>{loadRemainingVisitors();loadOtherArtwork()},0);
  }
  requestAnimationFrame(tick)
 }
-const visitors=[];
-
-const actionKinds=['SIT_BENCH','SIT_MAT','WAVE','WALK_DOG'];
-const actionCells={SIT_BENCH:['bench-west','bench-north','bench-east'],SIT_MAT:['mat'],WAVE:['wave-point'],WALK_DOG:['wave-point']};
-function routeVisitorTo(person,targetCellId){
- const start=nearestNavigationCell(person.x,person.y);
- person.targetCellId=targetCellId;
- person.route=routeCells(start.id,targetCellId).map(cell=>[cell.x,cell.y]);
- person.at=Math.hypot(person.x-start.x,person.y-start.y)<20?1:0;
- if(person.at>=person.route.length)person.at=person.route.length-1;
+const npcSettings={count:2,speed:85,height:85,offset:0};
+const visitorNames=['Sota','Hana','Mio','Ken','Ren','Aya'];
+const visitors=visitorNames.slice(0,2).map((guest,id)=>{
+ const path=VISITOR_PATHS[id%VISITOR_PATHS.length];
+ const distance=path.length*(id+2)/7;
+ return {id,guest,character:id,path,distance,sprites:null,active:false,visibility:0,
+  moving:true,...sampleVisitorPath(path,distance)};
+});
+function syncTraffic(){
+ npcSettings.count=visitorTarget(MatchaWorld.clock.read().minutes??480);
+ visitors.forEach((person,index)=>{
+  person.active=index<npcSettings.count&&Boolean(person.sprites);
+  if(!npcSettings.count)person.visibility=0;
+ });
 }
-function assignVisitorGoal(person){
- const exitId=person.spawnCount%2?'east-exit':'north-exit';
- person.exitCellId=exitId;
- if(person.transit){
-  person.goalState='TRANSIT_TO_EXIT';
-  routeVisitorTo(person,exitId);
-  return;
- }
- person.currentAction=actionKinds[person.actionCycle%actionKinds.length];
- person.goalState=person.currentAction;
- const options=actionCells[person.currentAction];
- const targetId=options[person.actionCycle%options.length];
- routeVisitorTo(person,targetId);
-}
-function respawnVisitor(person){
- const entrance=CELL_REGISTRY.entrance;
- person.active=true;person.spawnCount++;
- person.x=entrance.x+(person.id-3)*20;person.y=entrance.y;
- person.vx=0;person.vy=0;person.moving=false;person.stuck=0;
- person.actionUntil=0;person.restUntil=0;person.waveUntil=0;
- if(!person.transit)person.actionCycle++;
- assignVisitorGoal(person);
-}
-function finishVisitorAction(person){
- person.actionUntil=0;person.restUntil=0;person.waveUntil=0;
- if(parkDog?.owner===person)parkDog.active=false;
- person.goalState='EXITING';
- routeVisitorTo(person,person.exitCellId);
-}
-function beginVisitorAction(person,now){
- const duration={SIT_BENCH:3600,SIT_MAT:4200,WAVE:2100,WALK_DOG:5200}[person.goalState];
- person.actionUntil=now+duration;
- person.facingYaw=CELL_REGISTRY[person.targetCellId].yaw||0;
- if(person.goalState==='SIT_BENCH'||person.goalState==='SIT_MAT')person.restUntil=person.actionUntil;
- if(person.goalState==='WAVE')person.waveUntil=person.actionUntil;
- if(person.goalState==='WALK_DOG'){
-  person.dogWalkCenter={x:person.x,y:person.y};
-  person.dogWalkAngle=0;
-  person.dogWalkDirection=person.id%2?1:-1;
-  callDog(person);
+async function loadRemainingVisitors(){
+ try{
+  for(const [index,character] of ['01','02','03','04','05','06'].entries()){
+   visitorSprites[index]=await loadCharacterSprites(manifest,character,true);
+   if(index<visitors.length){visitors[index].sprites=visitorSprites[index];syncTraffic()}
+  }
+ }catch(error){
+  console.error('Additional park visitor sprites could not load.',error);
+  backgroundError='Some visitors could not load. Refresh to retry.';
  }
 }
-function routeVisitorAroundObstacle(person){
- if(!person.targetCellId)return;
- person.detourSign=-(person.detourSign||1);
- const nearest=nearestNavigationCell(person.x,person.y);
- person.route=routeCells(nearest.id,person.targetCellId).map(cell=>[cell.x,cell.y]);
- person.at=Math.hypot(person.x-nearest.x,person.y-nearest.y)<20?1:0;
- if(person.at>=person.route.length)person.at=person.route.length-1;
+async function loadOtherArtwork(){
+ try{
+  const image=await load(initialNight?'world-day.webp':'world-night.webp');
+  if(initialNight)day=image;else night=image;
+  for(const spec of foreground){
+   delete spec.dayLayer;delete spec.nightLayer;delete spec.blendValue;
+  }
+ }catch(error){
+  console.error('Additional park artwork could not load.',error);
+  backgroundError='Park lighting artwork could not load. Refresh to retry.';
+ }
 }
+window.addEventListener('matcha-clock',syncTraffic);
+syncTraffic();
 function callDog(owner=player){
+ ensureRenderer();
  const ownerX=owner.player?x:owner.x,ownerY=owner.player?y:owner.y;
  const facing=dogOwnerDirection(owner);
  parkDog={owner,x:ownerX-24,y:ownerY+24,heading:Math.atan2(-facing.y,facing.x),active:true};
@@ -430,27 +518,22 @@ function stepDog(dt){
  parkDog.heading+=headingDelta*(1-Math.exp(-dt*8));
 }
 window.callParkDog=callDog;
-for(const [id,person] of visitors.entries()){
- person.id=id;
- person.active=true;
- person.transit=person.purpose==='transit';
- person.actionCycle=id===5?3:0;
- person.spawnCount=0;
- person.stuck=0;
- assignVisitorGoal(person);
-}
 window.MatchaParkScene=Object.freeze({
  cells:CELL_REGISTRY,cellAt,routeCells,lighting:()=>blend,
+ playerState:()=>({x,y,action:testAction,sprite:currentSprite()?.file}),
  visitors:()=>visitors.map(person=>({
-  guest:person.guest,transit:person.transit,goal:person.goalState,active:person.active,
-  x:person.x,y:person.y,moving:person.moving,stuck:person.stuck
+  guest:person.guest,active:person.active,x:person.x,y:person.y,
+  moving:person.moving,distance:person.distance
  })),
  dogState:()=>parkDog&&{active:parkDog.active,x:parkDog.x,y:parkDog.y,owner:parkDog.owner.guest||'player'}
 });
-const T=globalThis.MatchaThree;
-if(!T)throw new Error('The park 3D renderer could not load.');
-const player={player:true,customer:'10'};
+const player={player:true,customer:'barista'};
 let renderer,scene,camera,actors=[],drawFigures=()=>{};
+let rendererLoading=null;
+function ensureRenderer(){
+ if(!rendererLoading)rendererLoading=initializeRenderer();
+}
+async function initializeRenderer(){
 try{
  const assets=await loadParkAssets(T);
  renderer=new T.WebGLRenderer({canvas:figureCanvas,alpha:true,antialias:true,powerPreference:'high-performance'});
@@ -506,19 +589,6 @@ try{
     rotate(forearm,'x',-.18);
    });
    positions.set(controls.root,{x:actor.rest.get(controls.root).position.x,y:actor.rest.get(controls.root).position.y+Math.abs(Math.sin(time*Math.PI*4/880))*.009,z:actor.rest.get(controls.root).position.z});
-  }else if(mode==='sit-bench'||mode==='sit-mat'||mode==='stretch-mat'){
-   controls.legs.forEach(({hip,knee,ankle,side})=>{
-    const matMode=mode!=='sit-bench';
-    rotate(hip,'x',matMode?-1.28:-1.02);
-    rotate(hip,'z',matMode?(side||1)*.48:0);
-    rotate(knee,'x',matMode?2.16:1.42);
-    rotate(ankle,'x',matMode?-.55:-.18);
-   });
-   controls.arms.forEach(({shoulder,upper,forearm,side})=>{
-    rotate(shoulder,'x',-.12);
-    rotate(upper,'z',(side||1)*.16);
-    rotate(forearm,'x',-.32);
-   });
   }else if(mode==='wave'){
    const wave=Math.sin(time*15)*.22;
    controls.arms.forEach(({shoulder,upper,forearm,side})=>{
@@ -599,7 +669,7 @@ try{
   points.needsUpdate=true;leash.geometry.computeBoundingSphere();
  }
  function addActor(who){
-  const modelId=who.player?'barista':['Hana','Yuki','Mio'].includes(who.guest)?'hiker':'walker';
+  const modelId='barista';
   const rig=assets.models[modelId].createInstance();
   const bones=rig.skinMeshes[0].skeleton.bones;
   const root=new T.Group();
@@ -625,8 +695,13 @@ try{
   };
   actors.push(actor);
  }
- let rendererDpr=0,rendererWidth=0,rendererHeight=0;
+ addActor(player);
+ let rendererDpr=0,rendererWidth=0,rendererHeight=0,rendered3d=false;
  drawFigures=({cx,cy,cw,ch,w,h,dpr,blend:dim,travel,dt})=>{
+  if(currentSprite()&&!parkDog?.active){
+   if(rendered3d){renderer.clear();rendered3d=false}
+   return;
+  }
   if(rendererDpr!==dpr||rendererWidth!==w||rendererHeight!==h){
    renderer.setPixelRatio(dpr);renderer.setSize(w,h,false);
    rendererDpr=dpr;rendererWidth=w;rendererHeight=h;
@@ -638,20 +713,13 @@ try{
   for(const actor of actors){
    const person=actor.who;
    const isPlayer=person.player;
-   if(!isPlayer&&!person.active){actor.root.visible=false;continue}
+   if((isPlayer&&currentSprite())||(!isPlayer&&!person.active)){actor.root.visible=false;continue}
    actor.root.visible=true;
    const px=isPlayer?x:person.x,py=isPlayer?y:person.y;
    const busy=isPlayer?testAction==='wave':person.waveUntil&&animationTime<person.waveUntil;
-   const resting=isPlayer?seatedNow()||testAction==='up-bench'||testAction==='up-mat':!!person.restUntil;
-   const moving=!busy&&(isPlayer?travel>0.35:!!person.moving&&!resting);
-   const requested=isPlayer?testAction:person.goalState;
-   const sitMode=requested==='SIT_BENCH'?'sit-bench':requested==='SIT_MAT'?'sit-mat':requested==='WALK_DOG'?'walk-dog':null;
-   const standing=isPlayer&&(testAction==='up-bench'||testAction==='up-mat');
-   const playerSitMode=requested==='sit-start-bench'||requested==='sit-bench'?'sit-bench'
-    :requested==='stretch-mat'?'stretch-mat':'sit-mat';
+   const moving=!busy&&(isPlayer?travel>0.35:!!person.moving);
    const dogWalking=person.goalState==='WALK_DOG'&&Boolean(person.actionUntil)&&animationTime<person.actionUntil;
-   const mode=busy?'wave':standing?'idle':resting?(isPlayer?playerSitMode:sitMode||'sit-mat')
-    :dogWalking?'walk-dog'
+   const mode=busy?'wave':dogWalking?'walk-dog'
     :moving?(parkDog?.active&&parkDog.owner===person?'walk-dog':'walk'):'idle';
    applyPose(actor,mode,animationTime/1000,dt);
    actor.rigRoot.updateMatrixWorld(true);
@@ -667,7 +735,7 @@ try{
    const height=(isPlayer?112:102)+36*py/1152;
    const scale=height/actor.rig.height;
    const vx=isPlayer?faceX:person.vx,vy=isPlayer?faceY:person.vy;
-   let desiredYaw=isPlayer&&testAction==='sit-bench'?benchYaw:isPlayer&&(testAction==='sit-mat'||testAction==='sit-start-mat')?yogaMat.yaw:
+   let desiredYaw=isPlayer&&testAction==='wave'?Math.atan2(faceX,faceY):
     (moving?Math.atan2(vx,vy):person.facingYaw??actor.heading??0);
    if(!isPlayer&&moving)person.facingYaw=desiredYaw;
    if(actor.heading===undefined)actor.heading=desiredYaw;
@@ -681,10 +749,14 @@ try{
   }
   drawDog();
   renderer.render(scene,camera);
+  rendered3d=true;
  };
 }catch(error){
- status.textContent='Local 3D character rigs could not load. Refresh to retry.';
- throw error;
+ backgroundError='Local 3D character rigs could not load. Refresh to retry.';
+ status.textContent=backgroundError;
+ console.error(backgroundError,error);
 }
+}
+setLoadingProgress(98,'Starting the park');
 last=performance.now();
 requestAnimationFrame(tick);

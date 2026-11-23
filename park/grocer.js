@@ -12,7 +12,22 @@
   const {camera,cart,renderer}=world, bag=[], keys=new Set(), held=new Map();
   const motion=matchMedia('(prefers-reduced-motion: reduce)');
   const player={x:0,z:6.65,yaw:0,pitch:-.015,speed:0};
-  let panelType='',aim=null,drag=null,hover=null,route=false,dark=false;
+  try {
+    const saved=JSON.parse(localStorage.getItem('matcha-grocer-pause-position')||'null');
+    localStorage.removeItem('matcha-grocer-pause-position');
+    if(saved && [saved.x,saved.z,saved.yaw,saved.pitch].every(Number.isFinite)
+      && saved.x>=-1.71 && saved.x<=1.71 && saved.z>=-5.32 && saved.z<=7.22
+      && saved.pitch>=-.78 && saved.pitch<=.53) {
+      Object.assign(player,{x:saved.x,z:saved.z,yaw:saved.yaw,pitch:saved.pitch});
+      if(Array.isArray(saved.bag)) for(const index of saved.bag) {
+        const unit=world.units[index];
+        if(Number.isInteger(index) && unit && !unit.picked) {bag.push(unit);world.setPicked(unit,true);}
+      }
+      world.basket(bag);
+    }
+  } catch(error) { console.warn('Grocer position could not be restored.',error); }
+  addEventListener('matcha-pause',()=>localStorage.setItem('matcha-grocer-pause-position',JSON.stringify({x:player.x,z:player.z,yaw:player.yaw,pitch:player.pitch,bag:bag.map(unit=>world.units.indexOf(unit))})));
+  let panelType='',aim=null,drag=null,hover=null,route=false;
   let last=performance.now(),lastRay=0,noticeEnd=0,stride=0,turnLean=0, width=0,height=0;
   const item=id=>MatchaPantry.item(id);
   const total=()=>bag.reduce((sum,u)=>sum+item(u.id)[3],0);
@@ -43,7 +58,7 @@
     bag.forEach(u=>world.setPicked(u,false));bag.length=0;world.basket(bag);tally();
     document.querySelector('matcha-hud').refresh();window.MatchaAudio?.playEffect('finish');
     panelType='paid';get('title').textContent='Paid ✓';content.replaceChildren();
-    content.append(node('p',n+' '+(n===1?'portion':'portions')+' added to your café pantry.'),node('p',amount+' coins paid · '+MatchaPantry.load().coins+' remaining'),button('Continue shopping',close),navLink('Back to counter','../../counter/'));
+    content.append(node('p',n+' '+(n===1?'portion':'portions')+' added to your café pantry.'),node('p',amount+' coins paid · '+MatchaPantry.load().coins+' remaining'),button('Continue shopping',close),navLink('Back to counter','../counter/'));
   }
   function navLink(label,path){const a=node('a',label,'link');a.href=path;return a;}
   function paymentTray(){
@@ -60,13 +75,6 @@
   function paintPanel(){
     if(!panel.open||panelType==='paid')return;
     const state=MatchaPantry.load();content.replaceChildren();
-    if(panelType==='menu'){
-      get('title').textContent='Village Grocer';
-      content.append(node('p','W/S to push or pull, A/D to sidestep. Drag to look or use the arrows. Tap a package or press E to pick it up.'),
-        button(dark?'Switch to daylight':'Switch to evening',()=>{dark=!dark;world.lighting(dark);close();},'link'),
-        navLink('Park','./'),navLink('Café counter','../../counter/'),navLink('Main menu','../../menu/'));
-      return;
-    }
     if(panelType==='inventory'){
       get('title').textContent='Café inventory';
       for(const [id,name] of MatchaPantry.ITEMS){const row=node('div',null,'row');row.append(icon(id),node('span',name),node('b',String(state.stock[id])));content.append(row);}
@@ -82,6 +90,7 @@
       content.append(button('Back to the aisle',close));return;
     }
     get('title').textContent=atTill()?'Checkout':'Your basket';
+    content.append(button('Shopping list',()=>show('list'),'link'),button('Café inventory',()=>show('inventory'),'link'));
     if(!bag.length){content.append(node('p','Your basket is empty.'),button('Browse shelves',close));return;}
     for(const id of new Set(bag.map(u=>u.id))){
       const n=bag.filter(u=>u.id===id).length,row=node('div',null,'row'),name=node('span',item(id)[1]);
@@ -102,8 +111,8 @@
     say(item(u.id)[1]+' added to basket.');window.MatchaAudio?.playEffect('finish');
   }
   function interact(){if(atTill())show('basket');else pick(aim);}
-  get('bagButton').onclick=()=>show('basket');get('listButton').onclick=()=>show('inventory');
-  get('menuButton').onclick=()=>show('menu');get('close').onclick=close;get('take').onclick=interact;
+  get('bagButton').onclick=()=>show('basket');
+  get('close').onclick=close;get('take').onclick=interact;
   function screen(e){const r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width*2-1,y:1-(e.clientY-r.top)/r.height*2};}
   canvas.onpointerdown=e=>{
     if(!e.isPrimary)return;
@@ -140,7 +149,7 @@
     b.onlostpointercapture=e=>held.delete(e.pointerId);
   }
   function update(now){
-    const dt=Math.min(.05,(now-last)/1000);last=now;
+    const dt=Math.max(0,Math.min(.05,(now-last)/1000));last=now;
     if(width!==canvas.clientWidth||height!==canvas.clientHeight){width=canvas.clientWidth;height=canvas.clientHeight;
       renderer.setSize(width,height,false);camera.aspect=width/Math.max(1,height);camera.updateProjectionMatrix();}
     const pressed=k=>keys.has(k)||Array.from(held.values()).includes(k);
@@ -178,18 +187,13 @@
       lastRay=now;aim=panel.open||route?null:world.pick(hover?.x??0,hover?.y??0);
       world.aim(aim);const take=get('take'),label=atTill()?'Check out':aim?'Pick '+item(aim.id)[1]+' · '+item(aim.id)[3]+' coins':'';
       take.hidden=!label||panel.open||route;if(take.textContent!==label)take.textContent=label;
-      const bay=player.z>5.8?'Entrance':atTill()?'Checkout':player.z< -4.4?'Checkout ahead':player.z>2?'Tea & orchard':player.z> -1.5?'Dairy & cold cabinet':'Fruit & baking';
-      if(get('place').textContent!==bay)get('place').textContent=bay;
       if(now>noticeEnd&&status.textContent)status.textContent='';
     }
     world.animate(dt,bag);renderer.render(world.scene,camera);requestAnimationFrame(update);
   }
-  let clockTimer;
   const syncClock=()=>{const s=MatchaPantry.load(), m=s.minutes??480; document.querySelector('matcha-hud').refresh(); world.lighting((m/60)%24<6||(m/60)%24>=18);};
-  const advanceClock=()=>{if(document.hidden)return;const s=MatchaPantry.load(),m=(s.minutes??480)+1;s.minutes=m%1440;s.day=(s.day??1)+Math.floor(m/1440);localStorage.setItem(MatchaPantry.KEY,JSON.stringify(s));syncClock();};
-  const schedule=()=>{clearInterval(clockTimer);if(!document.hidden)clockTimer=setInterval(advanceClock,5000);};
-  addEventListener('focus',schedule);addEventListener('blur',schedule);document.addEventListener('visibilitychange',schedule);
+  addEventListener('matcha-clock',syncClock);
   addEventListener('matcha-stock',()=>{document.querySelector('matcha-hud').refresh();paintPanel();});
-  addEventListener('storage',paintPanel);schedule();syncClock();
-  say('Push to walk · Drag to look · Tap a product',6000);requestAnimationFrame(update);
+  addEventListener('storage',paintPanel);syncClock();
+  tally();say('Push to walk · Drag to look · Tap a product',6000);requestAnimationFrame(update);
 })();

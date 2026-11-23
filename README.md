@@ -20,8 +20,34 @@ python3 -m http.server 8765
 ```
 
 Then open <http://127.0.0.1:8765/>. Use **WASD** or the arrow keys to walk in
-the park; press **E** near a destination to interact and **C** to call the dog.
+the park; press **E** near a visitor to wave or near the garden or grocer to
+enter, and **C** to call the dog.
 The on-screen direction pad and interaction hint are also available.
+Use the menu icon beside the clock or press **Escape** to open the menu.
+**Resume Game** returns to the last area, including your position in the park
+or grocer. Escape closes an open shop dialog before opening the menu.
+The world clock advances one game minute per real second while playing and
+pauses in the menu. Park visitor traffic changes with the time of day, with no
+visitors between 11pm and 6am. Waves earn one Gem; served orders earn one to
+three Gems based on their star rating. Existing satisfaction balances migrate
+to Gems.
+
+In the garden, select a bed to see its care status and water or harvest it;
+each bed also has its own growth slider. Water when
+care is due (from five minutes before to five minutes after the due time);
+growth stops after the window and begins to decrease after another 15 minutes.
+Harvesting adds produce to the café pantry and starts that bed again. Dragging
+a slider sets its growth and restarts its care timer; `?dev` uses a separate
+practice garden and does not add harvests to the pantry. Garden timers use
+real time, excluding time spent in the pause menu. The garden's pantry preview
+shows the same stock used by the counter, and harvests animate into it.
+
+The music button in the shared HUD works throughout the game and remembers
+your preference. Browsers may require a click or keypress before music can
+start. In the grocer, open the basket for the shopping list or inventory.
+
+The [park sprite protocol](park/ARCHITECTURE.md#sprite-authoring-protocol)
+describes the character sheets, scene-specific action views, and preview.
 
 ## Project layout
 

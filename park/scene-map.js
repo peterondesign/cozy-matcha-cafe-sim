@@ -1,10 +1,9 @@
 const cells = [
   {id:'entrance',type:'entrance',x:760,y:920,clearance:128,neighbors:['west-path','gate-path','south-path']},
   {id:'west-path',type:'path',x:520,y:1036,clearance:72,neighbors:['entrance']},
-  {id:'gate-path',type:'gate',x:800,y:760,clearance:112,neighbors:['entrance','garden-path','mat-path']},
+  {id:'gate-path',type:'gate',x:800,y:760,clearance:112,neighbors:['entrance','garden-path','lawn-path']},
   {id:'garden-path',type:'path',x:790,y:640,clearance:72,neighbors:['gate-path','crossing']},
-  {id:'mat-path',type:'path',x:980,y:610,clearance:72,neighbors:['gate-path','mat']},
-  {id:'mat',type:'mat',x:1040,y:640,yaw:.12,clearance:64,neighbors:['mat-path']},
+  {id:'lawn-path',type:'path',x:980,y:610,clearance:72,neighbors:['gate-path']},
   {id:'crossing',type:'path',x:820,y:540,clearance:76,neighbors:['garden-path','north-detour','north-west']},
   {id:'north-detour',type:'path',x:1040,y:420,clearance:76,neighbors:['crossing','north-curve']},
   {id:'north-west',type:'path',x:760,y:500,clearance:72,neighbors:['crossing']},
@@ -20,28 +19,69 @@ const cells = [
   {id:'east-bridge',type:'path',x:1500,y:980,clearance:84,neighbors:['south-bridge','east-curve']},
   {id:'east-curve',type:'path',x:1680,y:900,clearance:84,neighbors:['east-bridge','east-exit']},
   {id:'east-exit',type:'exit',x:1760,y:860,clearance:92,neighbors:['east-curve']},
-  {id:'wave-point',type:'grass',x:900,y:700,clearance:54,neighbors:['garden-path','mat-path']},
+  {id:'wave-point',type:'grass',x:900,y:700,clearance:54,neighbors:['garden-path','lawn-path']},
   {id:'west-lawn',type:'grass',x:300,y:680,clearance:180,neighbors:[]},
   {id:'east-lawn',type:'grass',x:1370,y:700,clearance:190,neighbors:[]},
-  {id:'blocked-tree-1',type:'blocked',x:1074,y:512,radius:22},
-  {id:'blocked-tree-2',type:'blocked',x:220,y:200,radius:70},
-  {id:'blocked-tree-3',type:'blocked',x:430,y:90,radius:55},
-  {id:'blocked-tree-4',type:'blocked',x:1604,y:250,radius:40},
-  {id:'blocked-tree-5',type:'blocked',x:80,y:400,radius:50},
-  {id:'blocked-tree-6',type:'blocked',x:860,y:1088,radius:48},
-  {id:'blocked-ne-hedge',type:'blocked',x:1760,y:295,width:480,height:450},
-  {id:'blocked-se-hedge',type:'blocked',x:1725,y:1055,width:530,height:130}
+  {id:'blocked-tree-1',type:'blocked',x:1085,y:456,radius:22},
+  {id:'blocked-tree-2',type:'blocked',x:60,y:320,radius:25},
+  {id:'blocked-tree-3',type:'blocked',x:380,y:140,radius:25},
+  {id:'blocked-tree-4',type:'blocked',x:1710,y:255,radius:20},
+  {id:'blocked-tree-5',type:'blocked',x:140,y:535,radius:20},
+  {id:'blocked-tree-6',type:'blocked',x:830,y:1140,radius:25},
+  {id:'blocked-north-tree',type:'blocked',x:825,y:225,radius:22},
+  {id:'blocked-north-cherry',type:'blocked',x:1110,y:155,radius:20},
+  {id:'blocked-northeast-tree',type:'blocked',x:1500,y:125,radius:20},
+  {id:'blocked-east-tree',type:'blocked',x:1950,y:220,radius:20},
+  {id:'blocked-bench-west',type:'blocked',polygon:[[1212,132],[1312,124],[1316,151],[1214,168]]},
+  {id:'blocked-bench-east',type:'blocked',polygon:[[1445,137],[1535,151],[1535,178],[1445,163]]},
+  {id:'blocked-garden',type:'blocked',polygon:[[0,630],[190,548],[345,570],[590,650],[640,705],[680,780],[710,805],[710,855],[675,875],[645,935],[300,875],[0,790]]},
+  {id:'blocked-shop',type:'blocked',polygon:[[1640,350],[1680,340],[1900,376],[2048,280],[2048,500],[1900,565],[1660,470]]},
+  {id:'blocked-water-west',type:'blocked',polygon:[[1500,1120],[1675,1040],[1750,1065],[1680,1152],[1500,1152]]},
+  {id:'blocked-water-east',type:'blocked',polygon:[[1960,980],[2048,950],[2048,1060],[1980,1090]]},
+  {id:'blocked-east-fence',type:'blocked',polygon:[[1588,962],[1600,970],[1800,832],[1790,820]]},
+  {id:'blocked-lamp-north',type:'blocked',x:980,y:220,radius:16},
+  {id:'blocked-lamp-crossing',type:'blocked',x:860,y:500,radius:16},
+  {id:'blocked-lamp-garden',type:'blocked',x:640,y:718,radius:16},
+  {id:'blocked-lamp-south',type:'blocked',x:930,y:902,radius:16}
 ];
 
 export const CELL_REGISTRY = Object.freeze(Object.fromEntries(
   cells.map(cell => [cell.id,Object.freeze({...cell,neighbors:Object.freeze(cell.neighbors||[])})])
 ));
 
+export const LANDMARKS = [
+  {id:'garden',x:700,y:905,r:135,label:'Enter Garden',href:'../garden/',
+   outline:[[0,600],[190,540],[345,565],[600,640],[640,705],[680,780],[710,805],[710,855],[675,875],[645,935],[490,925],[0,805]]},
+  {id:'grocer',x:1805,y:565,r:125,label:'Village Grocer',href:'../grocer/',
+   outline:[[1648,280],[1805,165],[1810,158],[1840,163],[1980,215],[2048,245],[2048,500],[1900,565],[1660,470],[1650,350],[1620,335],[1620,315],[1648,305]]}
+];
+
+export function nearestLandmark(x,y) {
+  let nearest=null,distance=Infinity;
+  for(const landmark of LANDMARKS){
+    const d=Math.hypot(landmark.x-x,landmark.y-y);
+    if(d<landmark.r&&d<distance){nearest=landmark;distance=d}
+  }
+  return nearest;
+}
+
+function containsPolygon(points,x,y) {
+  let inside=false;
+  for(let i=0,j=points.length-1;i<points.length;j=i++){
+    const [ax,ay]=points[j], [bx,by]=points[i];
+    const cross=(x-ax)*(by-ay)-(y-ay)*(bx-ax);
+    if(Math.abs(cross)<1e-8&&x>=Math.min(ax,bx)&&x<=Math.max(ax,bx)&&y>=Math.min(ay,by)&&y<=Math.max(ay,by))return true;
+    if((ay>y)!==(by>y)&&x<(bx-ax)*(y-ay)/(by-ay)+ax)inside=!inside;
+  }
+  return inside;
+}
+
 export function cellAt(x,y) {
   for (const cell of Object.values(CELL_REGISTRY)) {
     if (cell.type!=='blocked') continue;
     if (cell.radius && Math.hypot(x-cell.x,y-cell.y)<cell.radius) return cell;
     if (cell.width && Math.abs(x-cell.x)<cell.width/2 && Math.abs(y-cell.y)<cell.height/2) return cell;
+    if (cell.polygon && containsPolygon(cell.polygon,x,y)) return cell;
   }
   let nearest=null,nearestDistance=Infinity;
   for (const cell of Object.values(CELL_REGISTRY)) {
