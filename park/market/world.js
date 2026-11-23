@@ -23,7 +23,14 @@ async function loadGoodsModel(loader,T,id) {
   const {min,max}=geometry.boundingBox,size=max.clone().sub(min),scale=.43/Math.max(size.x,size.y,size.z);
   geometry.translate(-(min.x+max.x)/2,-min.y,-(min.z+max.z)/2);
   geometry.scale(scale,scale,scale);
-  return {geometry,material:Array.isArray(mesh.material)?mesh.material[0]:mesh.material};
+  // Trellis writes only a base colour. glTF then defaults the goods to fully metallic,
+  // which renders them black with no environment map. Match the timber: matte, non-metal.
+  const source=Array.isArray(mesh.material)?mesh.material[0]:mesh.material;
+  const material=source.clone();
+  material.metalness=0;material.roughness=.78;material.color.set(0xffffff);
+  if(material.map)material.map.colorSpace=T.SRGBColorSpace;
+  material.needsUpdate=true;
+  return {geometry,material};
 }
 async function buildMarket(canvas) {
   const T = MatchaThree;
@@ -52,8 +59,9 @@ async function buildMarket(canvas) {
   const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
   const scene=new T.Scene(),camera=new T.PerspectiveCamera(64,1,.04,65);
   scene.add(camera);
-  const sky=new T.HemisphereLight(0xfff0d3,0xc69c79,1.75);
-  const sun=new T.DirectionalLight(0xffe3aa,1.55);sun.position.set(-4,6,3);scene.add(sky,sun);
+  const sky=new T.HemisphereLight(0xfff6df,0xe4c39a,2.45);
+  const sun=new T.DirectionalLight(0xfff1c4,2.15);sun.position.set(-2.2,7.4,4.6);scene.add(sky,sun);
+  const doorway=new T.DirectionalLight(0xfff7e4,1.15);doorway.position.set(0,3.4,9.2);scene.add(doorway);
   const palettes=new Map(), box=new T.BoxGeometry(), ball=new T.SphereGeometry(.5,12,10),
     tin=new T.CylinderGeometry(.5,.5,1,20), flat=new T.PlaneGeometry(), leaf=new T.SphereGeometry(.5,6,4);
   function color(hex){if(!palettes.has(hex))palettes.set(hex,new T.MeshStandardMaterial({color:hex}));return palettes.get(hex);}
@@ -169,11 +177,6 @@ async function buildMarket(canvas) {
       const id=ids[(col+2)%ids.length],item=MatchaPantry.item(id);
       part(flat,plaque(item[1]+'  ·  '+item[3], '#53432a',61),x-side*.542,.86,z+(col-3.5)*.4,.36,.093,1,turn);
     }
-    for(let k=0;k<16;k++){
-      const lz=z+(rand()-.5)*3.4,ly=2.37+rand()*.12,lx=x-side*.30+rand()*.32;
-      part(leaf,k%3?'#80964d':'#a2ac62',lx,ly,lz,.17,.08,.24,rand()*6);
-      if(k%5===0)for(let j=0;j<4;j++)part(ball,'#eab3a1',lx+.048*Math.cos(j*1.57),ly+.04,lz+.048*Math.sin(j*1.57),.075,.03,.075);
-    }
   }
   for(const args of marketShelfStock(sections))stock(...args);
   // Low wooden counter, register, noren and a shopkeeper behind the till.
@@ -240,8 +243,9 @@ async function buildMarket(canvas) {
   function applyDusk(t){
     sunlight.opacity=1-t;
     skylight.color.copy(dayRoof).lerp(nightRoof,t);outside.color.copy(dayWindow).lerp(nightWindow,t);
-    sky.color.copy(daySky).lerp(nightSky,t);sky.intensity=1.75+(0.92-1.75)*t;
-    sun.color.copy(daySun).lerp(nightSun,t);sun.intensity=1.55+(0.82-1.55)*t;
+    sky.color.copy(daySky).lerp(nightSky,t);sky.intensity=2.45+(1.15-2.45)*t;
+    sun.color.copy(daySun).lerp(nightSun,t);sun.intensity=2.15+(0.55-2.15)*t;
+    doorway.color.copy(daySun).lerp(nightSun,t);doorway.intensity=1.15*(1-t);
     if(!scene.background||!scene.background.isColor)scene.background=dayGround.clone();
     scene.background.copy(dayGround).lerp(nightGround,t);
   }
@@ -249,13 +253,20 @@ async function buildMarket(canvas) {
     idleTime+=dt;
     const frame=reducedMotion.matches?0:Math.floor(idleTime*3)%14;
     setKeeperFrame(frame<8?frame:14-frame);
-    if(dusk!==duskTarget){const step=reducedMotion.matches?1:dt/20;dusk+=Math.sign(duskTarget-dusk)*Math.min(Math.abs(duskTarget-dusk),step);applyDusk(dusk);}
+    if(dusk!==duskTarget){
+      dusk=reducedMotion.matches?duskTarget:dusk+(duskTarget-dusk)*(1-Math.exp(-dt*1.6));
+      if(Math.abs(dusk-duskTarget)<.001)dusk=duskTarget;
+      applyDusk(dusk);
+    }
     for(let i=flight.length-1;i>=0;i--){const f=flight[i],o=cartGoods.children[bag.slice(-9).indexOf(f.unit)];
       f.t=Math.min(1,f.t+dt*2.8);
       if(!o||f.t===1){if(o)o.visible=true;scene.remove(f.o);flight.splice(i,1);continue;}
       f.o.position.lerpVectors(f.start,o.getWorldPosition(temp),f.t);f.o.position.y+=Math.sin(Math.PI*f.t)*.30;f.o.scale.setScalar(1-.47*f.t);
     }
   }
-  function lighting(dark){duskTarget=dark?1:0;if(!duskSet){dusk=duskTarget;duskSet=true;applyDusk(dusk);}}
+  function lighting(night){
+    duskTarget=typeof night==='number'?Math.max(0,Math.min(1,night)):night?1:0;
+    if(!duskSet){dusk=duskTarget;duskSet=true;applyDusk(dusk);}
+  }
   return {scene,camera,renderer,cart,sections,units,pick,aim,basket,lift,setPicked,animate,lighting};
 }

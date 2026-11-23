@@ -50,6 +50,10 @@ const initialNight=clockNightMix(MatchaWorld.clock.read().minutes??480)>=.5;
 const artPromise=load(initialNight?'world-night.webp':'world-day.webp').then(image=>{
  advanceLoading(40,'Loading park artwork');return image;
 }).catch(error=>{status.textContent='Park artwork could not load. Refresh to retry.';throw error});
+const buildingPromise=Promise.all([1,2,3,4].map(async tier=>{
+ const image=await load(`../menu/layers/shop/building-tier-${tier}.png`);
+ return [tier,image];
+ })).then(entries=>new Map(entries));
 const spritesPromise=(async()=>{
  const response=await fetch(spriteManifestUrl);
  if(!response.ok)throw new Error(`Sprite manifest: HTTP ${response.status}`);
@@ -62,7 +66,7 @@ const spritesPromise=(async()=>{
  status.textContent='Character sprites could not load. Refresh to retry.';
  throw error;
 });
-const [initialArt,{manifest,playerSprites}]=await Promise.all([artPromise,spritesPromise]);
+const [initialArt,{manifest,playerSprites},buildingImages]=await Promise.all([artPromise,spritesPromise,buildingPromise]);
 let day=initialNight?null:initialArt,night=initialNight?initialArt:null;
 const visitorSprites=new Array(6);
 const foreground=FOREGROUND_POLYGONS.map(spec=>({...spec,...polygonBounds(spec.points)}));
@@ -91,6 +95,16 @@ function prepareForeground(spec){
  }
 }
 let blend=0,blendTarget=0,x=824,y=859,last=0,testAction='normal',actionAt=0,walkVel=0,faceX=0,faceY=1,hanaFacingLeft=false;
+let buildingTier=1;
+function readBuildingSelection(){
+ try{
+  const shop=JSON.parse(localStorage.getItem('matchaShopState')||'{}');
+  buildingTier=Math.max(1,Math.min(4,Number(shop.tier||1)));
+ }catch(error){buildingTier=1;console.warn('Park building selection could not be read.',error)}
+}
+readBuildingSelection();
+window.addEventListener('storage',readBuildingSelection);
+window.addEventListener('matcha-shop',readBuildingSelection);
 const hintEl=document.querySelector('#hint');
 const playerMarker=document.querySelector('#player-marker');
 const waveReward=document.querySelector('#wave-reward');
@@ -382,6 +396,13 @@ function tick(now){
  ctx.setTransform(dpr*zoom,0,0,dpr*zoom,-cx*dpr*zoom,-cy*dpr*zoom);
  ctx.globalAlpha=1;ctx.drawImage(day||night,0,0,2048,1152);
  if(blend>0.001){ctx.globalAlpha=blend;ctx.drawImage(night||day,0,0,2048,1152);ctx.globalAlpha=1}
+ const building=buildingImages.get(buildingTier)||buildingImages.get(1);
+ if(building){
+  const width=620,height=620;
+   const left=450-(width/2);
+   const top=450-height;
+  ctx.drawImage(building,left,top,width,height);
+ }
  if(blend>.02){
   const lamps=[[996,124],[866,927],[1114,821],[632,576],[654,1082]];
   ctx.globalCompositeOperation='screen';

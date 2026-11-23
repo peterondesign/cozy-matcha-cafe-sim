@@ -191,7 +191,14 @@
     }
     world.animate(dt,bag);renderer.render(world.scene,camera);requestAnimationFrame(update);
   }
-  const syncClock=()=>{const s=MatchaPantry.load(), m=s.minutes??480; document.querySelector('matcha-hud').refresh(); world.lighting((m/60)%24<6||(m/60)%24>=18);};
+  function clockNightMix(minutes){
+    const value=Number(minutes),minuteOfDay=((Number.isFinite(value)?value:480)%1440+1440)%1440;
+    const hour=minuteOfDay/60;
+    const smooth=(a,b,v)=>{const t=Math.max(0,Math.min(1,(v-a)/(b-a)));return t*t*(3-2*t)};
+    const dawn=smooth(5,7,hour),dusk=smooth(17,19,hour);
+    return 1-Math.min(dawn,1-dusk);
+  }
+  const syncClock=()=>{const s=MatchaPantry.load(), m=s.minutes??480; document.querySelector('matcha-hud').refresh(); world.lighting(clockNightMix(m));};
   addEventListener('matcha-clock',syncClock);
   addEventListener('matcha-stock',()=>{document.querySelector('matcha-hud').refresh();paintPanel();});
   addEventListener('storage',paintPanel);syncClock();
