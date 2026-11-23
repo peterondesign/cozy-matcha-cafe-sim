@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Little Matcha Days</title>
+<link rel="icon" href="../brand/favicon-32.png" sizes="32x32">
+<link rel="icon" href="../brand/favicon-64.png" sizes="64x64">
+<link rel="apple-touch-icon" href="../brand/apple-touch.png">
+<link rel="stylesheet" href="../shared/hud.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  min-height: 100dvh;
+  font-family: Nunito, Georgia, sans-serif;
+  color: #5a3a22;
+  background: #1d2818 url("layers/bg.png") center / cover no-repeat fixed;
+}
+.menu {
+  width: min(720px, calc(100vw - 24px));
+  margin: calc(4vh + 48px) auto 3vh;
+  padding: 8px 22px 16px;
+  border: 42px solid transparent;
+  border-image: url("layers/ui/panel.png") 160 fill;
+  border-image-repeat: stretch;
+  position: relative;
+}
+.plaque { position: relative; width: min(280px, 70%); margin: -58px auto 8px; }
+.title { display: block; width: 100%; }
+.title-text {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  font-size: 32px;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+.close {
+  position: absolute;
+  top: -28px;
+  right: -18px;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 0;
+  background: url("layers/ui/close.png") center / contain no-repeat;
+  cursor: pointer;
+}
+.close:hover, .row:hover { filter: brightness(1.12); }
+.close:active, .row:active { filter: brightness(0.92); transform: translateY(1px); }
+.matcha { display: block; width: min(340px, 78%); margin: 0 auto 12px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 8px 18px 8px 16px;
+  border: 0;
+  background: url("layers/ui/pill-cream.png") center / 100% 100% no-repeat;
+  color: #5a3a22;
+  font: 800 20px/1 Nunito, Georgia, sans-serif;
+  cursor: pointer;
+  text-align: left;
+}
+.row.primary { background-image: url("layers/ui/pill-green.png"); color: #fff8e4; }
+.row img { width: 36px; height: 36px; object-fit: contain; flex: none; }
+.row span { flex: 1; }
+.wide { grid-column: 1 / -1; width: min(420px, 100%); justify-self: center; }
+.footer {
+  position: relative;
+  height: 78px;
+  margin: 14px 4px 0;
+  background: url("layers/ui/footer.png") center / 100% 100% no-repeat;
+}
+.avatar {
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  width: 76px;
+  height: 76px;
+  transform: translateY(-50%);
+  object-fit: contain;
+}
+.slot {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-weight: 800;
+  font-size: 16px;
+}
+.slot.who { left: 11%; width: 40%; }
+.slot.level { left: 54%; width: 42%; }
+.stats { display: none; }
+.slot img { width: 28px; height: 28px; object-fit: contain; flex: none; }
+.toast {
+  position: fixed; left: 50%; bottom: 16px; transform: translate(-50%, 10px);
+  opacity: 0; background: #2c331fe6; color: #fff4cf; border-radius: 999px;
+  padding: 10px 16px; font: 700 13px Nunito, sans-serif; pointer-events: none; transition: .2s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.confirm { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: #1b140c66; }
+.confirm[hidden] { display: none; }
+.confirm-card { width: min(88vw, 420px); padding: 26px 22px 20px; border-radius: 28px; background: #f7f1e2; color: #4a3424; text-align: center; font-family: Georgia, serif; }
+.confirm-card h2 { margin: 0 0 8px; font-size: 34px; font-weight: 500; }
+.confirm-card p { margin: 0 0 16px; font: 600 16px/1.4 system-ui, sans-serif; }
+.confirm-card .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.confirm-card button { min-height: 52px; border: 0; border-radius: 14px; background: #7d9a45; color: #fffaf0; font: 700 16px/1.2 system-ui, sans-serif; cursor: pointer; }
+.confirm-card #confirmNo { background: #8d6a45; }
+.settings { display: grid; grid-template-columns: 180px 1fr; gap: 14px; margin-top: 8px; }
+  #shelf { grid-template-columns: 1fr; }
+  #shelf p { margin: 8px 0 16px; font: 800 18px/1.4 Nunito, sans-serif; }
+  #shelfBody { max-height: 48vh; overflow: auto; padding-right: 4px; }
+  .stock-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stock-card {
+    display: grid; grid-template-columns: 42px 1fr; gap: 8px; align-items: center;
+    padding: 6px; border-radius: 14px; background: #fff8eacc;
+  }
+  .stock-card img { width: 42px; height: 42px; object-fit: contain; }
+  .stock-card b { display: block; font: 800 13px/1.2 system-ui, sans-serif; }
+  .stock-card small { color: #7d684c; font: 700 12px/1.2 system-ui, sans-serif; }
+  .meter { height: 12px; margin-top: 4px; border-radius: 99px; background: #efe6d4; overflow: hidden; box-shadow: inset 0 1px 2px #00000018; }
+  .meter span { display: block; height: 100%; background: linear-gradient(#c5e07a, #6f853a); }
+  .meter.low span { background: linear-gradient(#f0a3a0, #d4544a); }
+  .restock { display: block; width: min(168px, 46%); margin: 8px auto 0; border: 0; background: transparent; cursor: pointer; }
+.restock[hidden] { display: none !important; }
+  .restock img { width: 100%; height: auto; display: block; }
+[hidden] { display: none !important; }
+.cats { display: flex; flex-direction: column; gap: 10px; }
+.audio-block { margin: 0 0 16px; padding-bottom: 12px; border-bottom: 1px solid #e4d3b4; }
+.audio-block h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 22px; }
+.audio-block h2 img { width: 28px; height: 28px; object-fit: contain; }
+.mute-row, .volume { display: flex; align-items: center; gap: 8px; }
+.mute-row { justify-content: flex-end; margin-bottom: 8px; }
+.mute {
+  min-width: 46px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: #f4ead4;
+  color: #8a6a45;
+  font: 800 16px/1 Nunito, sans-serif;
+  cursor: pointer;
+}
+.mute.on { background: #7d9a45; color: #fff8e4; }
+input[type="range"] {
+  flex: 1;
+  height: 12px;
+  border-radius: 99px;
+  appearance: none;
+  background: linear-gradient(#7d9a45, #7d9a45) 0 / var(--fill, 70%) 100% no-repeat, #eadcc2;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 3px solid #6f853a;
+  background: #f7f1e2;
+}
+.account label { display: block; font-weight: 800; margin-bottom: 8px; }
+.account input {
+  width: 100%;
+  min-height: 52px;
+  border: 2px solid #c4a56e;
+  border-radius: 16px;
+  background: #fff8ea;
+  color: #5a3a22;
+  font: 800 18px/1 Nunito, sans-serif;
+  padding: 0 14px;
+}
+.panel[hidden] { display: none; }
+@media (max-width: 680px) {
+  .settings { grid-template-columns: 1fr; }
+  .menu { border-width: 22px; padding: 36px 12px 14px; margin: 76px auto 16px; }
+  .plaque { width: min(230px, 64%); margin: 8px auto 10px; }
+  .title-text { font-size: 26px; }
+  .grid { grid-template-columns: 1fr; }
+  .wide { width: 100%; }
+  .row {
+    min-height: 58px;
+    font-size: 18px;
+    border-style: solid;
+    border-width: 0 29px;
+    border-image: url("layers/ui/pill-cream-round.png") 0 163 fill;
+    background: none;
+  }
+  .row.primary {
+    border-image-source: url("layers/ui/pill-green.png");
+    border-image-slice: 0 293 fill;
+  }
+  .footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 0;
+    margin: 14px 2px 0;
+    padding: 6px 12px 6px 6px;
+    background: #f4ead4;
+    border: 2px solid #c4a56e;
+    border-radius: 999px;
+  }
+  .avatar {
+    position: static;
+    transform: none;
+    width: 34px;
+    height: 34px;
+  }
+  .slot.who, .slot.level { position: static; display: block; transform: none; font-size: 13px; white-space: nowrap; }
+  .close { width: 46px; height: 46px; top: 18px; right: 6px; }
+}
+</style>
+</head>
+<body>
+<matcha-hud></matcha-hud>
+<main class="menu">
+  <div class="plaque">
+    <img class="title" src="layers/ui/title.png" alt="">
+    <h1 class="title-text">Pause</h1>
+  </div>
+  <button class="close" type="button" data-action="close" aria-label="Close menu"></button>
+  <img class="matcha" id="matcha" src="layers/ui/matcha.png" alt="">
+  <nav class="grid" id="mainMenu" aria-label="Game menu">
+    <button class="row primary" type="button" data-action="resume"><img src="layers/ui/icon-play.png" alt=""><span>Resume Game</span></button>
+    <button class="row" type="button" data-action="park"><img src="layers/ui/icon-game.png" alt=""><span>Park</span></button>
+    <button class="row" type="button" data-action="inventory"><img src="layers/ui/icon-bag.png" alt=""><span>Inventory</span></button>
+    <button class="row" type="button" data-action="upgrades"><img src="layers/ui/icon-hammer.png" alt=""><span>Upgrades</span></button>
+    <button class="row" type="button" data-action="recipes"><img src="layers/ui/icon-book.png" alt=""><span>Recipes</span></button>
+    <button class="row" type="button" data-action="leaderboard"><img src="layers/ui/icon-trophy.png" alt=""><span>Leaderboard</span></button>
+    <button class="row" type="button" data-action="settings"><img src="layers/ui/icon-gear.png" alt=""><span>Settings</span></button>
+    <button class="row wide" type="button" data-action="new"><img src="layers/ui/icon-game.png" alt=""><span>New Game</span></button>
+  </nav>
+  <section class="settings" id="shelf" hidden>
+    <p id="shelfText"></p>
+    <div id="shelfBody"></div>
+    <button class="row primary" type="button" id="shelfBack">Back</button>
+  </section>
+  <section class="settings" id="settings" hidden>
+    <div class="cats">
+      <button class="row primary" type="button" data-cat="audio"><img src="layers/ui/icon-gear.png" alt=""><span>Audio</span></button>
+      <button class="row" type="button" data-cat="account"><img src="layers/ui/player.png" alt=""><span>Account</span></button>
+      <button class="row" type="button" id="settingsBack"><span>Back</span></button>
+    </div>
+    <div>
+      <div class="panel" id="audioPanel">
+        <div class="audio-block">
+          <h2><img src="layers/ui/icon-gear.png" alt="">Music</h2>
+          <div class="mute-row">
+            <button class="mute" type="button" id="musicOff" aria-label="Mute music">Mute</button>
+            <button class="mute on" type="button" id="musicOn" aria-label="Play music">On</button>
+          </div>
+          <div class="volume"><span aria-hidden="true">-</span><input id="musicVolume" type="range" min="0" max="100" value="70"><span aria-hidden="true">+</span></div>
+        </div>
+        <div class="audio-block">
+          <h2><img src="layers/ui/icon-coin.png" alt="">Sound Effects</h2>
+          <div class="mute-row">
+            <button class="mute" type="button" id="effectsOff" aria-label="Mute sound effects">Mute</button>
+            <button class="mute on" type="button" id="effectsOn" aria-label="Play sound effects">On</button>
+          </div>
+          <div class="volume"><span aria-hidden="true">-</span><input id="effectsVolume" type="range" min="0" max="100" value="80"><span aria-hidden="true">+</span></div>
+        </div>
+      </div>
+      <div class="panel account" id="accountPanel" hidden>
+        <label for="playerNameInput">Name on the counter</label>
+        <input id="playerNameInput" maxlength="18" autocomplete="nickname">
+      </div>
+    </div>
+  </section>
+  <footer class="footer" aria-label="Player">
+    <img class="avatar" src="layers/ui/player.png" alt="">
+    <div class="slot who"><span id="playerName"></span></div>
+    <div class="slot level"><img src="layers/ui/icon-level.png" alt=""><span id="levelValue"></span></div>
+  </footer>
+</main>
+<div class="toast" id="toast" role="status"></div>
+<div class="confirm" id="confirm" hidden>
+  <div class="confirm-card">
+    <h2>New game?</h2>
+    <p>This clears the day, the coins, and the queue.</p>
+    <div class="row">
+      <button type="button" id="confirmNo">Keep playing</button>
+      <button type="button" id="confirmYes">Start new game</button>
+    </div>
+  </div>
+</div>
+<script src="../shared/audio-bus.js"></script>
+<script src="../shared/pantry.js"></script>
+<script src="../shared/world-hud.js"></script>
+<script src="menu.js?v=18"></script>
+</body>
+</html>

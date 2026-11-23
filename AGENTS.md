@@ -1,32 +1,39 @@
 # AGENTS.md
 
-Guidance for coding agents working on this repository. To use the skill rather than develop it, see the README.
+Guidance for coding agents working on the Cozy Matcha Café game.
 
 ## Layout
 
 ```text
-skills/video-to-game/          the skill (this is what gets installed)
-  SKILL.md                     entry point: workflow, hard rules, reference routing
-  references/                  study the video, fal assets, game loop, look and post-processing, playtest
-  scripts/                     study_video, fal_asset, side_by_side, best_window (Python), record_play (Node)
-  templates/                   game.html (Three.js skeleton, post stack, state contract), play.mjs (scenario)
-gallery/<game>/                poster.gif, README.md, game/ (code only; assets live on the demo site)
-prompts/                       gameplay video prompts
-examples/plays/                real playtest scenarios
-tests/check_repo.py            static checks: links, sizes, hygiene, script syntax
-.claude-plugin/                Claude Code plugin + marketplace manifests
+menu/       Main menu
+counter/    Café service game and customer sprites
+grocer/     Village grocer route redirect
+park/       Park, visitor behaviors, and grocer implementation
+garden/     Garden gameplay
+shared/     HUD, audio, and pantry components
+assets/     Shared game artwork
+audio/      Music and sound effects
+brand/      Icons and identity artwork
+new-game/   Legacy route redirects
+tests/      Static project checks
 ```
 
 ## Commands
 
 ```bash
+python3 -m http.server 8765
 python3 tests/check_repo.py
 ```
 
+Run both commands from the repository root. The local site is available at
+`http://127.0.0.1:8765/`.
+
 ## Rules
 
-- Python scripts: 3.9+, standard library, ffmpeg/ffprobe on PATH; `fal-client` only in `fal_asset.py`. Every script
-  has a docstring with usage lines and `--help`. The recorder needs Node 18+ and `playwright-core`.
-- A new gallery entry: `poster.gif` (video left, game right, under 1 MB), `README.md` with the prompt, controls, fal
-  calls and cost, `game/` with the code, and a cell in the README table. Keep the repo under 120 MB.
-- No absolute home paths, secrets or API keys in committed files. Code comments in English.
+- Keep navigation and shared HUD behavior consistent across all five game
+  areas. The shared HUD lives in `shared/world-hud.js` and `shared/hud.css`.
+- Preserve the existing customer artwork, animation frames, and generated game
+  assets unless a change specifically requires replacing them.
+- Keep code comments in English. Do not commit credentials, local environment
+  files, or absolute machine-specific paths.
+- Update the static checks when adding or changing canonical routes.

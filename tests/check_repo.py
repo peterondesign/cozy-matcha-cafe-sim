@@ -1,62 +1,91 @@
 #!/usr/bin/env python3
-"""Static checks for the repository: links, sizes, hygiene, script syntax.
+"""Check game routes, local HTML links, and JavaScript syntax.
 
 Usage:
   python3 tests/check_repo.py
 """
-import ast
+from html.parser import HTMLParser
 import os
-import re
 import subprocess
 import sys
+from urllib.parse import urlsplit
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 errors = []
 
 
-def files(exts):
-    for d, dirs, fs in os.walk(ROOT):
-        dirs[:] = [x for x in dirs if x not in ('.git', 'node_modules')]
-        for f in fs:
-            if f.endswith(exts):
-                yield os.path.join(d, f)
+class LocalLinks(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.urls = []
+
+    def handle_starttag(self, tag, attrs):
+        for name, value in attrs:
+            if name in ("href", "src") and value:
+                self.urls.append(value)
 
 
-for p in files(('.md',)):
-    text = open(p, encoding='utf-8').read()
-    for link in re.findall(r'\]\(([^)#]+)\)', text):
-        if link.startswith(('http://', 'https://', 'mailto:')):
+routes = {
+    "/": "index.html",
+    "/menu/": "menu/index.html",
+    "/counter/": "counter/index.html",
+    "/grocer/": "grocer/index.html",
+    "/park/": "park/index.html",
+    "/garden/": "garden/index.html",
+    "/new-game/park/": "new-game/park/index.html",
+    "/new-game/garden/": "new-game/garden/index.html",
+}
+for route, relative_path in routes.items():
+    if not os.path.isfile(os.path.join(ROOT, relative_path)):
+        errors.append(f"{route}: missing {relative_path}")
+
+for current, dirs, names in os.walk(ROOT):
+    dirs[:] = [name for name in dirs if name not in (".git", "node_modules")]
+    for name in names:
+        if not name.endswith(".html"):
             continue
-        if not os.path.exists(os.path.normpath(os.path.join(os.path.dirname(p), link))):
-            errors.append(f'{os.path.relpath(p, ROOT)}: broken link {link}')
+        path = os.path.join(current, name)
+        try:
+            with open(path, encoding="utf-8") as source:
+                parser = LocalLinks()
+                parser.feed(source.read())
+        except (OSError, UnicodeError) as error:
+            errors.append(f"{os.path.relpath(path, ROOT)}: {error}")
+            continue
+        for value in parser.urls:
+            parsed = urlsplit(value)
+            if parsed.scheme or value.startswith("//") or not parsed.path:
+                continue
+            target = os.path.normpath(
+                os.path.join(ROOT if parsed.path.startswith("/") else current, parsed.path.lstrip("/"))
+            )
+            if os.path.isdir(target):
+                target = os.path.join(target, "index.html")
+            if not os.path.exists(target):
+                errors.append(
+                    f"{os.path.relpath(path, ROOT)}: broken local link {value}"
+                )
 
-for p in files(('.py',)):
-    try:
-        ast.parse(open(p, encoding='utf-8').read())
-    except SyntaxError as e:
-        errors.append(f'{os.path.relpath(p, ROOT)}: {e}')
-for p in files(('.mjs',)):
-    if subprocess.run(['node', '--check', p], capture_output=True).returncode:
-        errors.append(f'{os.path.relpath(p, ROOT)}: node --check failed')
+for current, dirs, names in os.walk(ROOT):
+    dirs[:] = [name for name in dirs if name not in (".git", "node_modules")]
+    for name in names:
+        path = os.path.join(current, name)
+        if name.endswith(".mjs"):
+            result = subprocess.run(
+                ["node", "--check", path], capture_output=True, text=True
+            )
+        elif name.endswith(".js"):
+            with open(path, encoding="utf-8") as source:
+                result = subprocess.run(
+                    ["node", "--input-type=module", "--check"],
+                    input=source.read(),
+                    capture_output=True,
+                    text=True,
+                )
+        else:
+            continue
+        if result.returncode:
+            errors.append(f"{os.path.relpath(path, ROOT)}: JavaScript syntax check failed")
 
-secret = re.compile(r'(/Users/[a-z]|/home/[a-z]|FAL_KEY\s*=\s*["\'][0-9a-f-]{8}|sk-[A-Za-z0-9]{20})')
-for p in files(('.md', '.py', '.mjs', '.js', '.html', '.json')):
-    if secret.search(open(p, encoding='utf-8', errors='ignore').read()):
-        errors.append(f'{os.path.relpath(p, ROOT)}: home path or secret')
-
-for p in files(('.gif',)):
-    if os.path.getsize(p) > 4_000_000:
-        errors.append(f'{os.path.relpath(p, ROOT)}: {os.path.getsize(p) // 1024} KB')
-total = sum(os.path.getsize(p) for p in files(('',)))
-if total > 120_000_000:
-    errors.append(f'repository is {total // 1_000_000} MB')
-
-for g in sorted(os.listdir(os.path.join(ROOT, 'gallery'))):
-    d = os.path.join(ROOT, 'gallery', g)
-    if os.path.isdir(d):
-        for need in ('poster.gif', 'README.md', 'game/index.html'):
-            if not os.path.exists(os.path.join(d, need)):
-                errors.append(f'gallery/{g}: missing {need}')
-
-print('\n'.join(errors) or f'ok ({total // 1_000_000} MB)')
+print("\n".join(errors) if errors else f"ok ({len(routes)} routes)")
 sys.exit(1 if errors else 0)

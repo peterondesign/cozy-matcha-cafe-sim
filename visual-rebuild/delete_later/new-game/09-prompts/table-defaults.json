@@ -1,9 +1,0 @@
-{
-  "prompt": "Decompose only the objects resting on the cafe counter in their default untouched poses. Return separate transparent layers for each of these and nothing else: matcha tin, bamboo whisk, metal sieve, empty cream chawan, empty tall glass, black kettle, kettle steam, ice bowl, milk bottle, oat milk bottle, left tool area mat, right prep mat, loose petals on the counter, and their contact shadows. Do not include the customer, speech bubble, garden, roof, noren, or lantern. Preserve original pixels, perspective, scale, and bounds.",
-  "image_input": [
-    "https://api.replicate.com/v1/files/ODdmNjJkMjYtNTFlMC00YjM4LWEzNjUtYjliYjcwYjg5NmI0.webp"
-  ],
-  "layer_decomposition": true,
-  "size": "2K",
-  "output_format": "png"
-}

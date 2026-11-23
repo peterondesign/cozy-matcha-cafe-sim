@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Village Grocer</title><link rel="stylesheet" href="world.css"><link rel="stylesheet" href="grocer.css"></head>
+<body>
+<canvas id="aisle" tabindex="0" aria-label="Village Grocer. Push with W and S. Strafe with A and D. Drag to look or use arrow keys. Press E to pick an item, B for your basket."></canvas>
+<matcha-hud></matcha-hud><script src="../shared/world-hud.js"></script>
+<div class="sign"><small>Village Grocer</small><strong id="place">Entrance</strong></div>
+<nav class="tools" aria-label="Shop controls"><button id="listButton">Inventory</button><button id="menuButton">Menu</button><a href="./" aria-label="Exit shop to park">Exit</a></nav>
+<div id="dot" aria-hidden="true"></div>
+<output id="status" role="status">Opening the shop…</output>
+<nav id="move" aria-label="Push and steer"><button data-key="up" aria-label="Push cart forward">▲</button><button data-key="left" aria-label="Turn left">◀</button><button data-key="down" aria-label="Pull cart back">▼</button><button data-key="right" aria-label="Turn right">▶</button></nav>
+<div id="interact"><button id="take" hidden></button></div>
+<button id="bagButton"><img src="../menu/layers/ui/icon-bag.png" alt=""><span>Basket<small id="tally">0 items</small></span></button>
+<dialog id="panel"><div class="heading"><h1 id="title"></h1><button id="close" aria-label="Close">×</button></div><div id="content"></div></dialog>
+<script src="../shared/audio-bus.js"></script><script src="market/order-list.js"></script><script src="../shared/pantry.js"></script>
+<script src="market/three-r170.js"></script><script src="market/world.js"></script><script src="grocer.js"></script>
+</body></html>

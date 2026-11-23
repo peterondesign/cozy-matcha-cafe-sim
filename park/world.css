@@ -1,0 +1,2 @@
+@import url('../../shared/hud.css');
+header{position:fixed;top:62px;left:12px;display:flex;gap:6px;z-index:2}header a,.shop button{background:#fff0cf;color:#49351f;border:3px double #9e7b48;border-radius:13px;padding:8px;text-decoration:none;font:bold 15px Georgia}#light{top:62px}

@@ -1,9 +1,0 @@
-{
-  "prompt": "From the supplied matcha game reference, isolate the complete empty Japanese tea cart as a production-ready game asset. Include only the honey-wood cart body, wheel, roof, beams, green noren curtain, paper lantern, empty shelves and completely bare preparation counter. Remove the large pause menu, every UI element, text, characters, garden, bridge, buildings, bowls, whisk, matcha, jars, bottles, tools, ingredients, petals and loose foreground leaves. Preserve the polished hand-painted cozy Japanese storybook style, exact perspective, warm brown linework and sage fabric. Decompose into useful editable layers: cart structure, roof and beams, noren curtain, lantern, shelves, wheel, counter surface and attached shadows.",
-  "image_input": [
-    "https://replicate.delivery/pbxt/QBrVb4unqh78kK4zhQBkLCEbjLsUVJgQ5WDCUy4VffNCb2Fw/first-game-screen.webp"
-  ],
-  "layer_decomposition": true,
-  "size": "2K",
-  "output_format": "png"
-}
