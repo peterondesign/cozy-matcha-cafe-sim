@@ -87,5 +87,20 @@ for current, dirs, names in os.walk(ROOT):
         if result.returncode:
             errors.append(f"{os.path.relpath(path, ROOT)}: JavaScript syntax check failed")
 
+for current, dirs, names in os.walk(ROOT):
+    dirs[:] = [name for name in dirs if name not in (".git", "node_modules")]
+    for name in names:
+        if not (name.startswith("test_") and name.endswith(".mjs")):
+            continue
+        path = os.path.join(current, name)
+        result = subprocess.run(
+            ["node", "--test", path], capture_output=True, text=True
+        )
+        if result.returncode:
+            errors.append(
+                f"{os.path.relpath(path, ROOT)}: tests failed\n"
+                f"{result.stdout}{result.stderr}"
+            )
+
 print("\n".join(errors) if errors else f"ok ({len(routes)} routes)")
 sys.exit(1 if errors else 0)

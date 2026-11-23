@@ -15,7 +15,7 @@ assets/     Shared game artwork
 audio/      Music and sound effects
 brand/      Icons and identity artwork
 new-game/   Legacy route redirects
-tests/      Static project checks
+tests/      Route, link, syntax, and behavior checks
 ```
 
 ## Commands
@@ -36,4 +36,5 @@ Run both commands from the repository root. The local site is available at
   assets unless a change specifically requires replacing them.
 - Keep code comments in English. Do not commit credentials, local environment
   files, or absolute machine-specific paths.
-- Update the static checks when adding or changing canonical routes.
+- Update the project checks when adding or changing canonical routes or game
+  behavior.

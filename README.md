@@ -20,8 +20,8 @@ python3 -m http.server 8765
 ```
 
 Then open <http://127.0.0.1:8765/>. Use **WASD** or the arrow keys to walk in
-the park; press **E** near a destination to interact. The on-screen direction
-pad and interaction hint are also available.
+the park; press **E** near a destination to interact and **C** to call the dog.
+The on-screen direction pad and interaction hint are also available.
 
 ## Project layout
 
@@ -36,7 +36,7 @@ assets/     Shared game artwork
 audio/      Music and sound effects
 brand/      Icons and identity artwork
 new-game/   Legacy URL redirects
-tests/      Static route, link, and syntax checks
+tests/      Route, link, syntax, and behavior checks
 ```
 
 Run the repository checks with:
