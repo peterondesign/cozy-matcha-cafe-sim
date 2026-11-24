@@ -6,9 +6,9 @@
     {id: 'large', name: 'Large Café', price: 280}
   ];
   const DECOR = [
-    {id: 's', name: 'S · Seating & Comfort', price: 110},
-    {id: 'l', name: 'L · Lighting & Signage', price: 35},
-    {id: 'g', name: 'G · Greenery, Shade & Accents', price: 75}
+    {id: 's', name: 'S · Seating & Comfort', price: 40},
+    {id: 'l', name: 'L · Lighting & Signage', price: 80},
+    {id: 'g', name: 'G · Greenery, Shade & Accents', price: 120}
   ];
   const oldSizes = {cart:'small', stall:'medium', pavilion:'large', kiosk:'large'};
   const oldDecor = {seating:'s', lantern:'l', lights:'l', planter:'g'};

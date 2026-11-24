@@ -14,7 +14,6 @@ const effectsVolume = document.getElementById('effectsVolume');
 function paintFooter() {
   const state = MatchaPantry.load();
   document.getElementById('playerName').textContent = audio?.settings.name || 'Player';
-  document.getElementById('levelValue').textContent = 'Level ' + Math.floor((Number(state.served) || 0) / 10);
   const avatar = `layers/avatars/avatar-${audio?.settings.avatar || 1}.png?v=2`;
   document.querySelector('.footer .avatar').src = avatar;
   const accountAvatar = document.getElementById('accountAvatar');
@@ -74,9 +73,9 @@ function restockLink() {
   if (!link) {
     link = document.createElement('a');
     link.id = 'restockLink';
-    link.className = 'restock';
+    link.className = 'row primary restock';
     link.href = '../grocer/';
-    link.innerHTML = '<img src="../park/goods/restock.png" alt="Restock">';
+    link.innerHTML = '<span>Restock</span>';
     document.getElementById('shelfBack').before(link);
   }
   return link;
@@ -97,29 +96,18 @@ function paintLeaderboard() {
   const state = MatchaWorld.clock.read();
   const served = Number(state.served || 0);
   const coinsGained = Number(state.coinsGained ?? state.coins ?? 120);
-  const history = state.statsHistory || {};
-  const now = Date.now();
-  const servedAt = Array.isArray(history.servedAt) ? history.servedAt : [];
 
-  const last24Hours = servedAt.filter(timestamp => now - Number(timestamp) <= 24 * 60 * 60 * 1000).length || Number(history.last24Hours ?? served);
-  const last7Days = servedAt.filter(timestamp => now - Number(timestamp) <= 7 * 24 * 60 * 60 * 1000).length || Number(history.last7Days ?? served);
-
-  // Sample leaderboard data - in production this would come from a backend
-  const players24h = [
-    { rank: 1, name: 'Matcha Master', served: Math.max(last24Hours, 42), avatar: 2 },
-    { rank: 2, name: 'Café Champion', served: Math.max(last24Hours - 5, 37), avatar: 3 },
-    { rank: 3, name: 'You', served: last24Hours, isYou: true, avatar: audio.settings.avatar },
-    { rank: 4, name: 'Tea Lover', served: Math.max(last24Hours - 15, 27), avatar: 8 },
-    { rank: 5, name: 'Barista Pro', served: Math.max(last24Hours - 20, 22), avatar: 10 }
-  ].sort((a, b) => b.served - a.served).map((p, i) => ({ ...p, rank: i + 1 }));
-
-  const players7d = [
-    { rank: 1, name: 'Matcha Master', served: Math.max(last7Days, 280), avatar: 2 },
-    { rank: 2, name: 'Café Champion', served: Math.max(last7Days - 30, 250), avatar: 3 },
-    { rank: 3, name: 'You', served: last7Days, isYou: true, avatar: audio.settings.avatar },
-    { rank: 4, name: 'Tea Lover', served: Math.max(last7Days - 80, 200), avatar: 8 },
-    { rank: 5, name: 'Barista Pro', served: Math.max(last7Days - 100, 180), avatar: 10 }
-  ].sort((a, b) => b.served - a.served).map((p, i) => ({ ...p, rank: i + 1 }));
+  const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  const you = {
+    player_id: window.MatchaLeaderboard?.playerId(),
+    display_name: audio.settings.name || 'Player',
+    avatar: audio.settings.avatar,
+    day: state.day ?? 1,
+    served,
+    coins: coinsGained,
+    gems: state.gems ?? 0,
+    isYou: true
+  };
 
   const renderTable = (players) => `
     <table class="leaderboard-table">
@@ -127,42 +115,46 @@ function paintLeaderboard() {
         <tr>
           <th>Rank</th>
           <th>Name</th>
+          <th>Day</th>
           <th>Served</th>
           <th>Coins</th>
         </tr>
       </thead>
       <tbody>
-        ${players.map(p => `
+        ${players.map((p, i) => `
           <tr class="${p.isYou ? 'you' : ''}">
-            <td>#${p.rank}</td>
-            <td><span class="leaderboard-player"><img src="layers/avatars/avatar-${p.avatar}.png?v=2" alt="">${p.name}</span></td>
-            <td>${p.served}</td>
-            <td>${(p.served * 12).toLocaleString('en-US')}</td>
+            <td>#${i + 1}</td>
+            <td><span class="leaderboard-player"><img src="layers/avatars/avatar-${Number(p.avatar) || 1}.png?v=2" alt="">${escapeHtml(p.display_name)}</span></td>
+            <td>${Number(p.day) || 1}</td>
+            <td>${Number(p.served) || 0}</td>
+            <td>${(Number(p.coins) || 0).toLocaleString('en-US')}</td>
           </tr>
         `).join('')}
       </tbody>
     </table>
   `;
 
-  body.innerHTML = `
-    <p class="leaderboard-note">Other players are examples; online rankings are not connected.</p>
-    <div class="leaderboard-tabs">
-      <button class="active" data-tab="24h">Last 24 Hours</button>
-      <button data-tab="7d">Last 7 Days</button>
-    </div>
-    <div data-tab-content="24h">${renderTable(players24h)}</div>
-    <div data-tab-content="7d" hidden>${renderTable(players7d)}</div>
-  `;
+  const showYou = (note) => {
+    body.innerHTML = `<p class="leaderboard-note">${note}</p>${renderTable([you])}`;
+  };
 
-  // Add tab switching
-  body.querySelectorAll('.leaderboard-tabs button').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      body.querySelectorAll('.leaderboard-tabs button').forEach(b => b.classList.remove('active'));
-      e.target.classList.add('active');
-      body.querySelectorAll('[data-tab-content]').forEach(el => el.hidden = true);
-      body.querySelector(`[data-tab-content="${e.target.dataset.tab}"]`).hidden = false;
-    });
-  });
+  if (!window.MatchaLeaderboard?.enabled()) {
+    showYou('Local only. Add shared/supabase-config.js to see other players.');
+    return;
+  }
+
+  body.innerHTML = '<p class="leaderboard-note">Loading rankings…</p>';
+  (async () => {
+    try {
+      await MatchaLeaderboard.push(you);
+      const rows = (await MatchaLeaderboard.top()) || [];
+      const others = rows.filter(row => row.player_id !== you.player_id);
+      const ranked = [...others, you].sort((a, b) => (Number(b.served) || 0) - (Number(a.served) || 0));
+      body.innerHTML = `<p class="leaderboard-note">Live rankings, all players.</p>${renderTable(ranked)}`;
+    } catch (error) {
+      showYou('Could not reach the leaderboard. Showing your stats only.');
+    }
+  })();
 }
 
 function paintRecipes(detailId = null) {
@@ -312,61 +304,6 @@ document.getElementById('playerNameInput').addEventListener('input', event => {
   audio.saveSettings();
   paintFooter();
 });
-document.getElementById('syncExport').addEventListener('click', async () => {
-  const words = ['matcha','garden','teapot','whisk','sakura','mochi','cafe','tiger','bamboo','clover','mint','lantern','meadow','cup','porch','blossom'];
-  const payload = JSON.stringify({ s: audio.settings, v: MatchaWorld.clock.read(), b: readShopState() });
-  const bytes = new TextEncoder().encode(payload);
-  const code = 'MATCHA-' + Array.from(bytes).map(byte => words[byte >> 4] + '-' + words[byte & 15]).join('-');
-  const status = document.getElementById('accountStatus');
-  try {
-    await navigator.clipboard.writeText(code);
-    status.textContent = 'Progress code copied to clipboard.';
-  } catch (error) {
-    const input = document.getElementById('syncCode');
-    input.hidden = false;
-    input.value = code;
-    input.select();
-    status.textContent = 'Copy the selected progress code.';
-  }
-});
-document.getElementById('syncImport').addEventListener('click', () => {
-  const input = document.getElementById('syncCode');
-  input.hidden = false;
-  input.focus();
-  if (!input.value.trim()) {
-    document.getElementById('accountStatus').textContent = 'Paste a progress code, then press Enter.';
-    return;
-  }
-  try {
-    const words = ['matcha','garden','teapot','whisk','sakura','mochi','cafe','tiger','bamboo','clover','mint','lantern','meadow','cup','porch','blossom'];
-    if (!input.value.trim().toUpperCase().startsWith('MATCHA-')) throw new Error('Invalid code');
-    const parts = input.value.trim().slice(7).split('-');
-    if (parts.length % 2) throw new Error('Invalid code');
-    const bytes = [];
-    for (let i = 0; i < parts.length; i += 2) {
-      const high = words.indexOf(parts[i].toLowerCase());
-      const low = words.indexOf(parts[i + 1].toLowerCase());
-      if (high < 0 || low < 0) throw new Error('Invalid code');
-      bytes.push((high << 4) | low);
-    }
-    const data = JSON.parse(new TextDecoder().decode(new Uint8Array(bytes)));
-    if (data.s) Object.assign(audio.settings, data.s);
-    else if (data.settings) Object.assign(audio.settings, data.settings);
-    audio.saveSettings();
-    if (data.v) localStorage.setItem('matchaVisualState', JSON.stringify(data.v));
-    else if (data.visual) localStorage.setItem('matchaVisualState', JSON.stringify(data.visual));
-    if (data.b) saveShopState(data.b);
-    else if (data.shop) saveShopState(data.shop);
-    paintFooter();
-    paintAudio();
-    document.getElementById('accountStatus').textContent = 'Progress imported.';
-  } catch (error) {
-    document.getElementById('accountStatus').textContent = 'That progress code is not valid.';
-  }
-});
-document.getElementById('syncCode').addEventListener('keydown', event => {
-  if (event.key === 'Enter') document.getElementById('syncImport').click();
-});
 function paintAvatarGrid() {
   const grid = document.getElementById('avatarGrid');
   grid.innerHTML = Array.from({ length: 20 }, (_, i) => {
@@ -399,11 +336,11 @@ function openUpgradeShelf() {
 }
 function readBalance() {
   const state = MatchaWorld.clock.read();
-  return Number(state.gems ?? 2000);
+  return Number(state.gems ?? 0);
 }
 function spendGems(amount) {
   const state = MatchaWorld.clock.read();
-  const balance = Number(state.gems ?? 2000);
+  const balance = Number(state.gems ?? 0);
   if (balance < amount) return false;
   state.gems = balance - amount;
   localStorage.setItem('matchaVisualState', JSON.stringify(state));
@@ -480,7 +417,7 @@ function paintUpgrades(tab = 'shop') {
 document.getElementById('confirmNo').addEventListener('click', () => { document.getElementById('confirm').hidden = true; });
 document.getElementById('confirmYes').addEventListener('click', () => {
   MatchaWorld.reset();
-  localStorage.setItem('matchaVisualState', JSON.stringify({ coins: 120, gems: 2000, day: 1, minutes: 480, orderIndex: 0, served: 0 }));
+  localStorage.setItem('matchaVisualState', JSON.stringify({ coins: 120, gems: 0, day: 1, minutes: 480, orderIndex: 0, served: 0 }));
   location.href = '../counter/';
 });
 window.addEventListener('keydown', event => {

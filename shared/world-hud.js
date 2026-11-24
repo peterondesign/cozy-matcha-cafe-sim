@@ -18,7 +18,7 @@ function readClockState() {
     localStorage.setItem(clockKey, JSON.stringify(state));
   }
   if (state.gems == null) {
-    state.gems = 2000;
+    state.gems = 0;
     localStorage.setItem(clockKey, JSON.stringify(state));
   }
   return state;

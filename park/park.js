@@ -141,6 +141,7 @@ let hanaWalkDistance=0;
 let hanaDirection='down';
 let waveFacing='down';
 let rewardAt=-Infinity;
+let waveRewarded=false;
 let trafficCheckAt=0;
 function currentFacing(){return hanaDirection==='side'?(hanaFacingLeft?'left':'right'):hanaDirection}
 function currentSprite(){
@@ -296,6 +297,7 @@ function closestSpot(){
    faceX=pal.x-x;faceY=pal.y-y;waveFacing=facingDirection(faceX,faceY);
    hanaDirection=waveFacing==='left'||waveFacing==='right'?'side':waveFacing;hanaFacingLeft=waveFacing==='left';
    setAction('wave');
+   waveRewarded=false;
    pal.waveUntil=animationTime+2200;
   }};
  }
@@ -403,7 +405,8 @@ hintEl?.addEventListener('click',event=>{
 function tick(now){
  const dt=Math.min(.05,Math.max(0,(now-last)/1000));last=now;
  animationTime+=dt*1000;
- if(testAction==='wave'&&animationTime-actionAt>=actionDuration(1600)){
+ if(testAction==='wave'&&!waveRewarded&&animationTime-actionAt>=actionDuration(1600)){
+  waveRewarded=true;
   const state=MatchaWorld.clock.read();
   const gems=state.gems??0;
   if(!Number.isFinite(gems))throw new Error('Invalid gem balance.');
@@ -412,14 +415,13 @@ function tick(now){
   window.dispatchEvent(new Event('matcha-stock'));
   waveReward.textContent='+1 gem';
   rewardAt=animationTime;
-  setAction('normal');
  }
  const active=new Set([...keys,...touches.values()]);
  let dx=Number(active.has('right'))-Number(active.has('left')),dy=Number(active.has('down'))-Number(active.has('up'));
  let len=Math.hypot(dx,dy);const stairs=x>475&&x<737&&y>388&&y<484;
  if(len)clickGoal=null;
- const busy=testAction==='wave';
- const want=busy||!len&&!clickGoal?0:stairs?105:88;
+ if((len||clickGoal)&&testAction==='wave')setAction('normal');
+ const want=!len&&!clickGoal?0:stairs?116:97;
  const ease=want>walkVel?260:340;
  if(walkVel<want)walkVel=Math.min(want,walkVel+ease*dt);
  else walkVel=Math.max(want,walkVel-ease*dt);
@@ -455,7 +457,7 @@ function tick(now){
   if(gd<14)clickGoal=null;
   else {dx=gx/gd;dy=gy/gd;len=1}
  }
- if(len&&speed>4&&!busy){
+ if(len&&speed>4){
   const mx=dx*dt*speed/(len||1),my=dy*dt*speed*.82/(len||1);
   if(allowed(x+mx,y))x+=mx;
   if(allowed(x,y+my))y+=my;
@@ -469,7 +471,7 @@ function tick(now){
  if(clickGoal&&speed>4&&dt>0&&!travel){clickGoal=null;blockedUntil=now+1500}
  if(clickGoal)setText(status,'Walking there');
  else if(backgroundError)setText(status,backgroundError);
- else if(len&&!travel&&!busy||now<blockedUntil){
+ else if(len&&!travel||now<blockedUntil){
   const lmId=nearestLandmark(x,y)?.id;
   if(lmId==='garden')setText(status,'Press E or tap Enter Garden');
   else if(lmId==='cafe')setText(status,'Press E or tap Enter Café');
@@ -602,7 +604,7 @@ function tick(now){
  }
  requestAnimationFrame(tick)
 }
-const npcSettings={count:2,speed:93,height:85,offset:0};
+const npcSettings={count:2,speed:102,height:85,offset:0};
 const visitorNames=['Sota','Hana','Mio','Ken','Ren','Aya'];
 const visitors=visitorNames.slice(0,2).map((guest,id)=>{
  const path=VISITOR_PATHS[id%VISITOR_PATHS.length];

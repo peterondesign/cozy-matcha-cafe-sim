@@ -1,0 +1,60 @@
+(() => {
+  const ID_KEY = 'matchaPlayerId';
+  const config = () => window.MATCHA_SUPABASE || {};
+  const enabled = () => Boolean(config().url && config().anonKey);
+
+  // Optional, gitignored config. Missing file means local-only mode.
+  const configScript = document.createElement('script');
+  configScript.src = new URL('supabase-config.js', document.currentScript.src).href;
+  configScript.onerror = () => {};
+  document.head.appendChild(configScript);
+
+  function playerId() {
+    let id = localStorage.getItem(ID_KEY);
+    if (!id) {
+      id = crypto.randomUUID ? crypto.randomUUID() : `p-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem(ID_KEY, id);
+    }
+    return id;
+  }
+
+  function headers(extra = {}) {
+    return {
+      apikey: config().anonKey,
+      Authorization: `Bearer ${config().anonKey}`,
+      'Content-Type': 'application/json',
+      ...extra
+    };
+  }
+
+  async function push(stats) {
+    if (!enabled()) return false;
+    const row = {
+      player_id: playerId(),
+      display_name: String(stats.display_name || 'Player').slice(0, 24),
+      avatar: Number(stats.avatar) || 1,
+      day: Number(stats.day) || 1,
+      served: Number(stats.served) || 0,
+      coins: Number(stats.coins) || 0,
+      gems: Number(stats.gems) || 0,
+      updated_at: new Date().toISOString()
+    };
+    const response = await fetch(`${config().url}/rest/v1/matcha_saves?on_conflict=player_id`, {
+      method: 'POST',
+      headers: headers({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
+      body: JSON.stringify(row)
+    });
+    return response.ok;
+  }
+
+  async function top() {
+    if (!enabled()) return null;
+    const response = await fetch(`${config().url}/rest/v1/matcha_leaderboard?select=*&order=served.desc&limit=20`, {
+      headers: headers()
+    });
+    if (!response.ok) throw new Error(`Leaderboard request failed: ${response.status}`);
+    return response.json();
+  }
+
+  window.MatchaLeaderboard = { enabled, playerId, push, top };
+})();
