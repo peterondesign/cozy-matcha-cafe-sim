@@ -11,10 +11,14 @@
 
   function playerId() {
     let id = localStorage.getItem(ID_KEY);
-    if (!id) {
-      id = crypto.randomUUID ? crypto.randomUUID() : `p-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      localStorage.setItem(ID_KEY, id);
-    }
+    if (id && /^[a-z]+-[a-z]+-[0-9]{2}$/.test(id)) return id;
+    const first = ['mint','mochi','moss','peach','cloud','honey','bamboo','matcha','sakura','vanilla','cocoa','berry','olive','daisy','juniper','taro'];
+    const second = ['sprout','whisk','tea','cup','frog','leaf','kettle','bunny','blossom','panda','meadow','muffin','lantern','garden','picnic','button'];
+    const randomIndex = max => crypto.getRandomValues
+      ? crypto.getRandomValues(new Uint32Array(1))[0] % max
+      : Math.floor(Math.random() * max);
+    id = `${first[randomIndex(first.length)]}-${second[randomIndex(second.length)]}-${String(randomIndex(100)).padStart(2,'0')}`;
+    localStorage.setItem(ID_KEY, id);
     return id;
   }
 
@@ -25,6 +29,16 @@
       'Content-Type': 'application/json',
       ...extra
     };
+  }
+
+  async function request(url, options = {}) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   async function push(stats) {
@@ -39,7 +53,7 @@
       gems: Number(stats.gems) || 0,
       updated_at: new Date().toISOString()
     };
-    const response = await fetch(`${config().url}/rest/v1/matcha_saves?on_conflict=player_id`, {
+    const response = await request(`${config().url}/rest/v1/matcha_saves?on_conflict=player_id`, {
       method: 'POST',
       headers: headers({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
       body: JSON.stringify(row)
@@ -49,7 +63,7 @@
 
   async function pull(code) {
     if (!enabled()) throw new Error('Cloud sync is offline.');
-    const response = await fetch(`${config().url}/rest/v1/matcha_saves?player_id=eq.${encodeURIComponent(code)}&select=*`, {
+    const response = await request(`${config().url}/rest/v1/matcha_saves?player_id=eq.${encodeURIComponent(code)}&select=*`, {
       headers: headers()
     });
     if (!response.ok) throw new Error(`Sync request failed: ${response.status}`);
@@ -63,7 +77,7 @@
 
   async function top() {
     if (!enabled()) return null;
-    const response = await fetch(`${config().url}/rest/v1/matcha_leaderboard?select=*&order=served.desc&limit=20`, {
+    const response = await request(`${config().url}/rest/v1/matcha_leaderboard?select=*&order=served.desc&limit=20`, {
       headers: headers()
     });
     if (!response.ok) throw new Error(`Leaderboard request failed: ${response.status}`);

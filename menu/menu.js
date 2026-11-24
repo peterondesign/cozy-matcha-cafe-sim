@@ -312,8 +312,8 @@ document.getElementById('syncCopy').addEventListener('click', async () => {
   }
 });
 document.getElementById('syncLoad').addEventListener('click', async () => {
-  const code = document.getElementById('syncInput').value.trim();
-  if (!/^[A-Za-z0-9-]{6,64}$/.test(code)) {
+  const code = document.getElementById('syncInput').value.trim().toLowerCase().replace(/\s+/g, '-');
+  if (!/^[a-z]+-[a-z]+-[0-9]{2}$/.test(code)) {
     setSyncStatus('That code does not look right.', 'warn');
     return;
   }
@@ -333,7 +333,9 @@ document.getElementById('syncLoad').addEventListener('click', async () => {
     }));
     location.reload();
   } catch (error) {
-    setSyncStatus('Could not load that code. Check your connection.', 'warn');
+    setSyncStatus(error.name === 'AbortError'
+      ? 'The cloud took too long. Try again in a moment.'
+      : 'Could not load that code. Check the code and connection.', 'warn');
   }
 });
 musicVolume.addEventListener('input', () => {
