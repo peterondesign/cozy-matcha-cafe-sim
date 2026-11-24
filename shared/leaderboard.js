@@ -47,6 +47,20 @@
     return response.ok;
   }
 
+  async function pull(code) {
+    if (!enabled()) throw new Error('Cloud sync is offline.');
+    const response = await fetch(`${config().url}/rest/v1/matcha_saves?player_id=eq.${encodeURIComponent(code)}&select=*`, {
+      headers: headers()
+    });
+    if (!response.ok) throw new Error(`Sync request failed: ${response.status}`);
+    const rows = await response.json();
+    return rows[0] || null;
+  }
+
+  function setPlayerId(id) {
+    localStorage.setItem(ID_KEY, id);
+  }
+
   async function top() {
     if (!enabled()) return null;
     const response = await fetch(`${config().url}/rest/v1/matcha_leaderboard?select=*&order=served.desc&limit=20`, {
@@ -56,5 +70,5 @@
     return response.json();
   }
 
-  window.MatchaLeaderboard = { enabled, playerId, push, top };
+  window.MatchaLeaderboard = { enabled, playerId, setPlayerId, push, pull, top };
 })();

@@ -91,23 +91,22 @@ function paintInventory() {
   }).join('')}</div>`;
   restockLink().hidden = false;
 }
-function paintLeaderboard() {
-  const body = document.getElementById('shelfBody');
+function currentStats() {
   const state = MatchaWorld.clock.read();
-  const served = Number(state.served || 0);
-  const coinsGained = Number(state.coinsGained ?? state.coins ?? 120);
-
-  const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-  const you = {
+  return {
     player_id: window.MatchaLeaderboard?.playerId(),
     display_name: audio.settings.name || 'Player',
     avatar: audio.settings.avatar,
     day: state.day ?? 1,
-    served,
-    coins: coinsGained,
-    gems: state.gems ?? 0,
-    isYou: true
+    served: Number(state.served || 0),
+    coins: Number(state.coinsGained ?? state.coins ?? 120),
+    gems: state.gems ?? 0
   };
+}
+function paintLeaderboard() {
+  const body = document.getElementById('shelfBody');
+  const escapeHtml = value => String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  const you = { ...currentStats(), isYou: true };
 
   const renderTable = (players) => `
     <table class="leaderboard-table">
@@ -281,7 +280,62 @@ document.querySelectorAll('[data-cat]').forEach(button => button.addEventListene
   document.querySelectorAll('[data-cat]').forEach(item => item.classList.toggle('primary', item === button));
   document.getElementById('audioPanel').hidden = button.dataset.cat !== 'audio';
   document.getElementById('accountPanel').hidden = button.dataset.cat !== 'account';
+  if (button.dataset.cat === 'account') syncNow();
 }));
+function setSyncStatus(text, tone = '') {
+  const status = document.getElementById('syncStatus');
+  status.textContent = text;
+  status.className = `sync-status ${tone}`.trim();
+}
+async function syncNow() {
+  document.getElementById('syncCode').value = MatchaLeaderboard.playerId();
+  if (!MatchaLeaderboard.enabled()) {
+    setSyncStatus('Offline: progress is saved on this device only.', 'warn');
+    return;
+  }
+  setSyncStatus('Saving…');
+  try {
+    const ok = await MatchaLeaderboard.push(currentStats());
+    setSyncStatus(ok ? 'Synced: progress is saved to the cloud.' : 'Could not save. Progress stays on this device.', ok ? 'ok' : 'warn');
+  } catch (error) {
+    setSyncStatus('Could not reach the cloud. Progress stays on this device.', 'warn');
+  }
+}
+document.getElementById('syncCopy').addEventListener('click', async () => {
+  const code = document.getElementById('syncCode').value;
+  try {
+    await navigator.clipboard.writeText(code);
+    setSyncStatus('Code copied. Paste it on your other device.', 'ok');
+  } catch (error) {
+    document.getElementById('syncCode').select();
+    setSyncStatus('Select the code and copy it manually.', 'warn');
+  }
+});
+document.getElementById('syncLoad').addEventListener('click', async () => {
+  const code = document.getElementById('syncInput').value.trim();
+  if (!/^[A-Za-z0-9-]{6,64}$/.test(code)) {
+    setSyncStatus('That code does not look right.', 'warn');
+    return;
+  }
+  setSyncStatus('Loading…');
+  try {
+    const row = await MatchaLeaderboard.pull(code);
+    if (!row) {
+      setSyncStatus('No save found for that code.', 'warn');
+      return;
+    }
+    MatchaLeaderboard.setPlayerId(code);
+    audio.settings.name = row.display_name || 'Player';
+    audio.settings.avatar = Number(row.avatar) || 1;
+    audio.saveSettings();
+    localStorage.setItem('matchaVisualState', JSON.stringify({
+      ...MatchaWorld.clock.read(), coins: row.coins, coinsGained: row.coins, gems: row.gems, day: row.day, served: row.served
+    }));
+    location.reload();
+  } catch (error) {
+    setSyncStatus('Could not load that code. Check your connection.', 'warn');
+  }
+});
 musicVolume.addEventListener('input', () => {
   audio.settings.music = Number(musicVolume.value);
   audio.settings.musicMuted = audio.settings.music === 0;
@@ -417,6 +471,7 @@ function paintUpgrades(tab = 'shop') {
 document.getElementById('confirmNo').addEventListener('click', () => { document.getElementById('confirm').hidden = true; });
 document.getElementById('confirmYes').addEventListener('click', () => {
   MatchaWorld.reset();
+  localStorage.removeItem(MatchaShop.KEY);
   localStorage.setItem('matchaVisualState', JSON.stringify({ coins: 120, gems: 0, day: 1, minutes: 480, orderIndex: 0, served: 0 }));
   location.href = '../counter/';
 });

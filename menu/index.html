@@ -172,6 +172,23 @@ input[type="range"]::-webkit-slider-thumb {
   background: #f7f1e2;
 }
 .account label { display: block; font-weight: 800; margin-bottom: 8px; }
+.sync { margin-top: 14px; }
+.sync h2 { margin: 0 0 6px; }
+.sync-status { margin: 0 0 10px; font-weight: 800; color: #5a3a22; }
+.sync-status.ok { color: #3f6b1f; }
+.sync-status.warn { color: #9a4a1c; }
+.sync-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.sync-row input { flex: 1; min-width: 0; font-size: 14px; }
+.sync-row button {
+  min-height: 52px;
+  padding: 0 16px;
+  border: 2px solid #6f853a;
+  border-radius: 16px;
+  background: #6f853a;
+  color: #fff;
+  font: 800 16px/1 Nunito, sans-serif;
+  cursor: pointer;
+}
 .account input {
   width: 100%;
   min-height: 52px;
@@ -448,6 +465,20 @@ input[type="range"]::-webkit-slider-thumb {
         <input id="playerNameInput" maxlength="18" autocomplete="nickname">
         <h2>Avatar</h2>
         <div class="avatar-scroll"><div class="avatar-grid" id="avatarGrid" aria-label="Choose avatar"></div></div>
+        <section class="sync" aria-labelledby="syncTitle">
+          <h2 id="syncTitle">Account sync</h2>
+          <p class="sync-status" id="syncStatus" role="status">Checking…</p>
+          <label for="syncCode">Your sync code</label>
+          <div class="sync-row">
+            <input id="syncCode" readonly>
+            <button type="button" id="syncCopy">Copy</button>
+          </div>
+          <label for="syncInput">Use a code from another device</label>
+          <div class="sync-row">
+            <input id="syncInput" maxlength="64" autocomplete="off" placeholder="Paste code">
+            <button type="button" id="syncLoad">Load</button>
+          </div>
+        </section>
       </div>
     </div>
   </section>
@@ -478,8 +509,8 @@ input[type="range"]::-webkit-slider-thumb {
 <script src="../shared/audio-bus.js?v=2"></script>
 <script src="../shared/pantry.js"></script>
 <script src="../shared/shop.js"></script>
-<script src="../shared/leaderboard.js?v=1"></script>
+<script src="../shared/leaderboard.js?v=2"></script>
 <script src="../shared/world-hud.js?v=3"></script>
-<script src="menu.js?v=26"></script>
+<script src="menu.js?v=27"></script>
 </body>
 </html>
