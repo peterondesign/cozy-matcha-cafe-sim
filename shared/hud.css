@@ -9,3 +9,12 @@ input,textarea,[contenteditable="true"]{-webkit-user-select:text;user-select:tex
 .hud-menu,.hud-music{display:grid;place-items:center;width:clamp(27px,4vw,44px);height:clamp(27px,4vw,44px);padding:0;pointer-events:auto;border:3px double #9e7b48;border-radius:12px;background:#fff0cf;color:#49351f;text-decoration:none;font:bold 22px/1 system-ui;cursor:pointer}
 .hud-menu:focus-visible,.hud-music:focus-visible{outline:3px solid #efa94b;outline-offset:2px}
 @media(max-width:800px){.top-hud{top:6px;gap:4px;width:96vw;flex-wrap:wrap;justify-content:center}.pill,.pill img,.hud-menu,.hud-music{height:32px}.hud-menu,.hud-music{width:32px;font-size:18px}.pill b{font-size:12px}}
+@media(max-width:520px){
+ .top-hud{top:max(6px,env(safe-area-inset-top));left:50%;width:calc(100vw - 12px);max-width:390px;gap:2px;flex-wrap:nowrap;justify-content:center}
+ .pill{height:30px;flex:0 1 auto}
+ .pill img{height:30px;max-width:78px}
+ .pill b{font-size:10px}
+ .pill.day{display:none}
+ .pill.time{display:none}
+ .hud-menu,.hud-music{height:30px;width:30px;min-width:30px;border-width:2px;border-radius:9px;font-size:16px}
+}

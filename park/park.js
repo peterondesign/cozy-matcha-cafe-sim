@@ -18,7 +18,7 @@ function setHidden(el,hidden){if(el.hidden!==hidden)el.hidden=hidden}
 let loadingWork=0,backgroundError='';
 function advanceLoading(amount,label){loadingWork+=amount;setLoadingProgress(loadingWork,label)}
 async function load(file){const img=new Image();img.src=file;await img.decode();return img}
-const compactForTouch=matchMedia('(pointer: coarse)').matches;
+const compactForTouch=matchMedia('(pointer: coarse)').matches||(innerWidth<700&&innerHeight>innerWidth);
 async function loadArtwork(file){
  const image=await load(file);
  if(!compactForTouch||image.width<=2048)return image;
@@ -220,7 +220,9 @@ function cafePlacement(){
  const scale=grocerHeight()/buildingImage.height*tierScale;
  const width=Math.round(buildingImage.width*scale);
  const height=Math.round(buildingImage.height*scale);
- return {left:Math.round(CAFE_CENTER.x-(width/2)),top:Math.round(CAFE_CENTER.y-(height/2)),width,height};
+ const portrait=compactForTouch&&innerWidth/innerHeight<.75;
+ const center=portrait?{x:620,y:420}:CAFE_CENTER;
+ return {left:Math.round(center.x-(width/2)),top:Math.round(center.y-(height/2)),width,height};
 }
 // Pre-renders each landmark's gold outline with its glow once, at 2× for zoom sharpness.
 const glowCache=new Map();
@@ -485,7 +487,10 @@ function tick(now){
  const w=canvas.clientWidth,h=canvas.clientHeight,dpr=Math.min(devicePixelRatio,compactForTouch?1.25:2);
  if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr)}
  const zoom=Math.max(w/2048,h/1152),cw=w/zoom,ch=h/zoom;
- const cx=Math.max(0,Math.min(2048-cw,x-cw/2)),cy=Math.max(0,Math.min(1152-ch,y-ch/2));
+ const portrait=compactForTouch&&w/h<.75;
+ let cameraX=x-cw/2;
+ if(portrait)cameraX-=cw*.28;
+ const cx=Math.max(0,Math.min(2048-cw,cameraX)),cy=Math.max(0,Math.min(1152-ch,y-ch/2));
  view={cx,cy,zoom};
  if(now>=trafficCheckAt&&npcSettings.speed>0){
   trafficCheckAt=now+1000;
@@ -522,7 +527,9 @@ function tick(now){
  blend=reduce?blendTarget:blend+(blendTarget-blend)*(1-Math.exp(-dt*1.6));
  ctx.setTransform(dpr*zoom,0,0,dpr*zoom,-cx*dpr*zoom,-cy*dpr*zoom);
  // Only the visible part of the 4096px artwork is drawn; the rest is never rasterized.
- const sx=cx*2,sy=cy*2,sw=cw*2,sh=ch*2;
+ const artWidth=(day||night)?.width||2048;
+ const artHeight=(day||night)?.height||1152;
+ const sx=cx*artWidth/2048,sy=cy*artHeight/1152,sw=cw*artWidth/2048,sh=ch*artHeight/1152;
  ctx.globalAlpha=1;
  if(day||night)ctx.drawImage(day||night,sx,sy,sw,sh,cx,cy,cw,ch);
  if(blend>0.001){ctx.globalAlpha=blend;if(night||day)ctx.drawImage(night||day,sx,sy,sw,sh,cx,cy,cw,ch);ctx.globalAlpha=1}
