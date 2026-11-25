@@ -16,12 +16,23 @@ const EFFECTS = {
 
 function loadSettings() {
   const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+  let playerName = saved.name;
+  
+  // Generate randomized name for first-time players
+  if (!playerName || playerName === 'Player') {
+    if (typeof PlayerNameGenerator !== 'undefined') {
+      playerName = PlayerNameGenerator.generate();
+    } else {
+      playerName = 'Player';
+    }
+  }
+  
   return {
     music: Number(saved.music ?? 70),
     effects: Number(saved.effects ?? 80),
     musicMuted: Boolean(saved.musicMuted),
     effectsMuted: Boolean(saved.effectsMuted),
-    name: saved.name || 'Player',
+    name: playerName,
     avatar: Number(saved.avatar || 1)
   };
 }

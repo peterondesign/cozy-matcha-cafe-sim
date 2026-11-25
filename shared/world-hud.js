@@ -161,6 +161,19 @@ class MatchaHud extends HTMLElement {
       this.updateMusic();
       window.addEventListener('matcha-audio',this.updateMusic);
     }
+    // Add profile sync button
+    if (typeof ProfileConnector !== 'undefined') {
+      const profile = document.createElement('button');
+      profile.type = 'button';
+      profile.className = 'hud-profile';
+      profile.setAttribute('aria-label', 'Profile & Sync');
+      profile.title = 'Profile & Sync';
+      profile.textContent = '👤';
+      profile.addEventListener('click', () => {
+        window.ProfileConnector?.toggle?.();
+      });
+      this.append(profile);
+    }
     this.refresh();
     this.update=()=>this.refresh();
     window.addEventListener('pageshow',this.update);

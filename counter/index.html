@@ -95,13 +95,35 @@
   .step-buttons button.now { border-color: #6f853a; box-shadow: 0 0 0 2px #6f853a55; opacity: 1; filter: none; }
   @media (max-width: 800px) {
     .order-card { left: 2%; top: 8px; width: min(48vw, 280px); }
-    .sheet { inset: 5% 6% 7%; }
-    .drink { width: 72px; height: 72px; }
-    .head h2 { font-size: 17px; }
-    .sheet { inset: 6% 6% 22%; gap: 2px; }
-    .step-buttons { width: min(96vw, 560px); bottom: 12px; gap: 8px; }
-    .step-buttons button { flex-basis: 46%; min-height: 64px; font-size: 16px; padding: 8px 14px; }
-    .step-buttons button img { width: 36px; height: 36px; }
+    .sheet { inset: 5% 6% 22%; gap: 2px; }
+    .drink { width: 60px; height: 60px; }
+    .head h2 { font-size: 16px; }
+    .head p { font-size: 10px; }
+    .quality { font-size: 10px; }
+    .step-buttons { width: min(96vw, 560px); bottom: 8px; gap: 6px; }
+    .step-buttons button { flex-basis: 46%; min-height: 60px; font-size: 14px; padding: 6px 12px; }
+    .step-buttons button img { width: 32px; height: 32px; }
+    .customer-slot { width: 120px; }
+    .hud { left: 2.2%; top: 2%; max-width: 32%; padding: 6px 10px; }
+    .hud small { font-size: 9px; }
+    .hud strong { font-size: clamp(14px, 1.8vw, 20px); }
+    .steps { display: none; }
+  }
+  @media (max-width: 480px) {
+    .order-card { left: 1%; top: 6px; width: min(50vw, 240px); }
+    .sheet { inset: 5% 5% 20%; gap: 2px; }
+    .drink { width: 50px; height: 50px; }
+    .head h2 { font-size: 15px; }
+    .head p { font-size: 9px; }
+    .bar { margin-top: 2px; height: 5px; }
+    .step-buttons { left: 1%; right: 1%; width: auto; bottom: 6px; gap: 5px; }
+    .step-buttons button { flex-basis: calc(50% - 2.5px); min-height: 54px; font-size: 12px; padding: 5px 8px; }
+    .step-buttons button img { width: 28px; height: 28px; }
+    .customer-slot { width: 110px; }
+    .hud { left: 1%; top: 1%; max-width: 35%; padding: 4px 8px; font-size: 12px; }
+    .hud small { font-size: 8px; }
+    .hud strong { font-size: clamp(12px, 1.6vw, 16px); margin-top: 1px; }
+    .hud em { font-size: 11px; margin-top: 1px; }
   }
   .hud, .steps, .serve {
     position: absolute;
@@ -554,7 +576,9 @@
       <button type="button" id="nextCustomer">Welcome the next customer</button>
     </div>
   </div>
-  <matcha-hud></matcha-hud><script src="../shared/audio-bus.js?v=2"></script><script src="../shared/world-hud.js?v=3"></script>
+  <matcha-hud></matcha-hud><script src="../shared/loading-toast.js"></script><script src="../shared/audio-bus.js?v=2"></script><script src="../shared/world-hud.js?v=3"></script><script src="../shared/profile-connector.js"></script>
+  <link rel="stylesheet" href="../shared/loading-toast.css">
+  <link rel="stylesheet" href="../shared/profile-connector.css">
   <div class="stock-warn" id="stockWarn" hidden>
     <img id="stockWarnIcon" alt="">
     <p><span id="stockWarnText"></span><span class="meter"><span id="stockWarnFill"></span></span></p>
@@ -672,8 +696,22 @@ function loadImage(src) {
   if (cache.has(src)) return cache.get(src);
   const pending = new Promise((resolve, reject) => {
     const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error(src));
+    img.onload = () => {
+      resolve(img);
+      cache.set(src, img);
+      if (window.LoadingToast) {
+        const stats = cache.size;
+        if (stats % 5 === 0) {
+          window.LoadingToast.setProgress(stats, 100, `Loaded ${stats} assets…`);
+        }
+      }
+    };
+    img.onerror = () => {
+      reject(new Error(src));
+      if (window.LoadingToast) {
+        window.LoadingToast.showError(`Failed to load: ${src}`);
+      }
+    };
     img.src = src;
   });
   cache.set(src, pending);
@@ -858,6 +896,7 @@ function keepAlive() {
 }
 async function approach() {
   phase = 'playing';
+  customer.src = customerSrc(WALK_UP[0]);
   setScale(0.72);
   for (let i = 0; i < WALK_UP.length; i += 1) {
     customer.src = customerSrc(WALK_UP[i]);
@@ -1262,8 +1301,9 @@ async function serveOrder() {
   for (let i = 0; i < WALK_AWAY.length; i += 1) {
     customer.src = customerSrc(WALK_AWAY[i]);
     setScale(1 - (i + 1) * 0.08);
-    await wait(200);
+    await wait(190);
   }
+  customer.src = customerSrc(WALK_AWAY[0]);
   phase = 'result';
   showResult();
 }

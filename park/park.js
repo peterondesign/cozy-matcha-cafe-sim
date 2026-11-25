@@ -615,7 +615,10 @@ const npcSettings={count:2,speed:102,height:85,offset:0};
 const visitorNames=['Sota','Hana','Mio','Ken','Ren','Aya'];
 const visitors=visitorNames.slice(0,2).map((guest,id)=>{
  const path=VISITOR_PATHS[id%VISITOR_PATHS.length];
- const distance=path.length*(id+2)/7;
+ const clockMinutes=MatchaWorld.clock.read().minutes??480;
+ const baseDistance=path.length*(id+2)/7;
+ const timeProgression=(clockMinutes*npcSettings.speed)%path.length;
+ const distance=baseDistance+timeProgression;
  return {id,guest,character:id,path,distance,sprites:null,active:false,visibility:0,
   moving:true,...sampleVisitorPath(path,distance)};
 });

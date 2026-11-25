@@ -93,6 +93,8 @@ function paintInventory() {
 }
 function currentStats() {
   const state = MatchaWorld.clock.read();
+  let shop = {};
+  try { shop = JSON.parse(localStorage.getItem('matchaShopState') || '{}'); } catch (error) { shop = {}; }
   return {
     player_id: window.MatchaLeaderboard?.playerId(),
     display_name: audio.settings.name || 'Player',
@@ -100,7 +102,13 @@ function currentStats() {
     day: state.day ?? 1,
     served: Number(state.served || 0),
     coins: Number(state.coinsGained ?? state.coins ?? 120),
-    gems: state.gems ?? 0
+    gems: state.gems ?? 0,
+    state: {
+      visual: state,
+      shop,
+      settings: audio.settings,
+      pantry: MatchaPantry.load()
+    }
   };
 }
 function paintLeaderboard() {
@@ -327,7 +335,26 @@ document.getElementById('syncLoad').addEventListener('click', async () => {
     MatchaLeaderboard.setPlayerId(code);
     audio.settings.name = row.display_name || 'Player';
     audio.settings.avatar = Number(row.avatar) || 1;
+    if (row.state?.settings) Object.assign(audio.settings, row.state.settings);
     audio.saveSettings();
+    if (row.state?.shop) localStorage.setItem('matchaShopState', JSON.stringify(row.state.shop));
+    if (row.state?.pantry) localStorage.setItem('matchaVisualState', JSON.stringify({
+      ...MatchaWorld.clock.read(),
+      ...row.state.pantry,
+      coins: row.coins,
+      gems: row.gems,
+      day: row.day,
+      served: row.served
+    }));
+    if (row.state?.visual) localStorage.setItem('matchaVisualState', JSON.stringify({
+      ...MatchaWorld.clock.read(),
+      ...row.state.visual,
+      coins: row.coins,
+      gems: row.gems,
+      day: row.day,
+      served: row.served
+    }));
+    else
     localStorage.setItem('matchaVisualState', JSON.stringify({
       ...MatchaWorld.clock.read(), coins: row.coins, coinsGained: row.coins, gems: row.gems, day: row.day, served: row.served
     }));

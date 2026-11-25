@@ -9,6 +9,7 @@ create table if not exists public.matcha_saves (
   served int not null default 0,
   coins int not null default 0,
   gems int not null default 0,
+  state jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now()
 );
 
@@ -20,6 +21,7 @@ alter table public.matcha_saves add column if not exists day int not null defaul
 alter table public.matcha_saves add column if not exists served int not null default 0;
 alter table public.matcha_saves add column if not exists coins int not null default 0;
 alter table public.matcha_saves add column if not exists gems int not null default 0;
+alter table public.matcha_saves add column if not exists state jsonb not null default '{}'::jsonb;
 alter table public.matcha_saves add column if not exists updated_at timestamptz not null default now();
 
 -- An older table keyed by sync_code: copy keys into player_id, move the primary key
@@ -46,7 +48,7 @@ begin
 end $$;
 
 -- Leaderboard view: only public-facing columns, no internal fields.
-create or replace view public.matcha_leaderboard as
+create or replace view public.matcha_leaderboard with (security_invoker=true) as
   select player_id, display_name, avatar, day, served, coins
   from public.matcha_saves
   order by served desc, day desc

@@ -51,6 +51,7 @@
       served: Number(stats.served) || 0,
       coins: Number(stats.coins) || 0,
       gems: Number(stats.gems) || 0,
+      state: stats.state && typeof stats.state === 'object' ? stats.state : {},
       updated_at: new Date().toISOString()
     };
     const response = await request(`${config().url}/rest/v1/matcha_saves?on_conflict=player_id`, {
