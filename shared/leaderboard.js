@@ -9,11 +9,23 @@
   if (enabled()) {
     resolveReady(true);
   } else {
-    const configScript = document.createElement('script');
-    configScript.src = new URL('supabase-config.js', document.currentScript.src).href;
-    configScript.onload = () => resolveReady(true);
-    configScript.onerror = () => resolveReady(false);
-    document.head.appendChild(configScript);
+    (async () => {
+      try {
+        const configUrl = new URL('supabase-config.js', document.currentScript.src).href;
+        const response = await fetch(configUrl, { cache: 'no-store' });
+        if (!response.ok) {
+          resolveReady(false);
+          return;
+        }
+        const source = await response.text();
+        if (source.trim()) {
+          Function(source)();
+        }
+        resolveReady(enabled());
+      } catch (error) {
+        resolveReady(false);
+      }
+    })();
   }
 
   function playerId() {
