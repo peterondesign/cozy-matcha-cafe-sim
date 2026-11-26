@@ -1,6 +1,10 @@
 (() => {
   const ID_KEY = 'matchaPlayerId';
-  const config = () => window.MATCHA_SUPABASE || {};
+  const DEFAULT_CONFIG = {
+    url: 'https://cbfwjsdefulacpmkrwdi.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNiZndqc2RlZnVsYWNwbWtyd2RpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjg0MjA5NjIsImV4cCI6MjA0Mzk5Njk2Mn0.pBKqb8qtiBbDs5_vkHTfoWNA8rmDnttbhN3DrvvNNUM'
+  };
+  const config = () => ({ ...DEFAULT_CONFIG, ...(window.MATCHA_SUPABASE || {}) });
   const enabled = () => Boolean(config().url && config().anonKey);
   let resolveReady;
   const readyPromise = new Promise(resolve => { resolveReady = resolve; });

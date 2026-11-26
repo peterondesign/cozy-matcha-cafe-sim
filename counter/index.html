@@ -576,7 +576,7 @@
       <button type="button" id="nextCustomer">Welcome the next customer</button>
     </div>
   </div>
-  <matcha-hud></matcha-hud><script src="../shared/loading-toast.js"></script><script src="../shared/audio-bus.js?v=2"></script><script src="../shared/world-hud.js?v=3"></script><script src="../shared/profile-connector.js"></script><script src="../shared/leaderboard.js"></script>
+  <matcha-hud></matcha-hud><script src="../shared/loading-toast.js"></script><script src="../shared/audio-bus.js?v=2"></script><script src="../shared/world-hud.js?v=3"></script><script src="../shared/profile-connector.js"></script><script src="../shared/leaderboard.js?v=5"></script>
   <link rel="stylesheet" href="../shared/loading-toast.css">
   <link rel="stylesheet" href="../shared/profile-connector.css">
   <div class="stock-warn" id="stockWarn" hidden>
@@ -1387,6 +1387,11 @@ setInterval(() => {
   if (document.hidden) return;
   keepAlive();
 }, 1000);
+setInterval(() => {
+  if (document.hidden) return;
+  saveProgress();
+}, 5000);
+window.addEventListener('pagehide', saveProgress);
 layout();
 render();
 approach();
