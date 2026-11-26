@@ -688,6 +688,7 @@ let gems = Number(savedState.gems ?? 0);
 let day = Number(savedState.day || 1);
 let minutes = Number(savedState.minutes ?? 8 * 60);
 const held = { glass: null, bowl: null, pair: null };
+let lastCloudSyncWarningAt = 0;
 
 function frameSrc(action, n) {
   return `${ACTIONS[action].dir}/frame_${String(n).padStart(2, '0')}.png`;
@@ -1284,7 +1285,24 @@ function saveProgress() {
       coins,
       gems,
       state
-    }).catch(err => console.warn('Failed to sync to cloud:', err));
+    }).then(ok => {
+      if (ok) return;
+      const now = Date.now();
+      if (now - lastCloudSyncWarningAt < 8000) return;
+      lastCloudSyncWarningAt = now;
+      if (window.LoadingToast?.showError) {
+        window.LoadingToast.showError('Could not save to cloud. Progress is safe on this device.');
+      }
+      console.warn('Cloud save did not complete.');
+    }).catch(err => {
+      const now = Date.now();
+      if (now - lastCloudSyncWarningAt < 8000) return;
+      lastCloudSyncWarningAt = now;
+      if (window.LoadingToast?.showError) {
+        window.LoadingToast.showError('Could not save to cloud. Progress is safe on this device.');
+      }
+      console.warn('Failed to sync to cloud:', err);
+    });
   }
 }
 function saveCoins(amount) {

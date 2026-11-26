@@ -59,6 +59,12 @@
       headers: headers({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
       body: JSON.stringify(row)
     });
+    if (!response.ok) {
+      let detail = '';
+      try { detail = await response.text(); } catch (error) {}
+      console.warn('Cloud save rejected.', { status: response.status, detail });
+      return false;
+    }
     return response.ok;
   }
 

@@ -63,4 +63,8 @@ create policy "matcha_saves anon insert" on public.matcha_saves for insert to an
 create policy "matcha_saves anon update" on public.matcha_saves for update to anon using (true) with check (true);
 create policy "matcha_saves anon select" on public.matcha_saves for select to anon using (true);
 
+-- Fresh installs (or drop/recreate) also need explicit table privileges for PostgREST.
+grant usage on schema public to anon;
+grant select, insert, update on public.matcha_saves to anon;
+
 grant select on public.matcha_leaderboard to anon;
