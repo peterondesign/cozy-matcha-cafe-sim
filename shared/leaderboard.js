@@ -2,12 +2,19 @@
   const ID_KEY = 'matchaPlayerId';
   const config = () => window.MATCHA_SUPABASE || {};
   const enabled = () => Boolean(config().url && config().anonKey);
+  let resolveReady;
+  const readyPromise = new Promise(resolve => { resolveReady = resolve; });
 
   // Optional, gitignored config. Missing file means local-only mode.
-  const configScript = document.createElement('script');
-  configScript.src = new URL('supabase-config.js', document.currentScript.src).href;
-  configScript.onerror = () => {};
-  document.head.appendChild(configScript);
+  if (enabled()) {
+    resolveReady(true);
+  } else {
+    const configScript = document.createElement('script');
+    configScript.src = new URL('supabase-config.js', document.currentScript.src).href;
+    configScript.onload = () => resolveReady(true);
+    configScript.onerror = () => resolveReady(false);
+    document.head.appendChild(configScript);
+  }
 
   function playerId() {
     let id = localStorage.getItem(ID_KEY);
@@ -91,5 +98,5 @@
     return response.json();
   }
 
-  window.MatchaLeaderboard = { enabled, playerId, setPlayerId, push, pull, top };
+  window.MatchaLeaderboard = { enabled, ready: () => readyPromise, playerId, setPlayerId, push, pull, top };
 })();

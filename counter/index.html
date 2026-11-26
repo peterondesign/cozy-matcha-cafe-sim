@@ -1336,6 +1336,7 @@ async function serveOrder() {
     await wait(190);
   }
   customer.src = customerSrc(WALK_AWAY[0]);
+  served += 1;
   phase = 'result';
   showResult();
 }
@@ -1343,7 +1344,6 @@ function welcomeNext() {
   advanceClock();
   result.hidden = true;
   orderCard.classList.remove('leaving');
-  served += 1;
   const state = MatchaWorld.clock.read();
   const history = state.statsHistory || {};
   const servedAt = Array.isArray(history.servedAt) ? history.servedAt : [];

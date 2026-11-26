@@ -145,14 +145,14 @@ function paintLeaderboard() {
     body.innerHTML = `<p class="leaderboard-note">${note}</p>${renderTable([you])}`;
   };
 
-  if (!window.MatchaLeaderboard?.enabled()) {
-    showYou('Local only. Add shared/supabase-config.js to see other players.');
-    return;
-  }
-
   body.innerHTML = '<p class="leaderboard-note">Loading rankings…</p>';
   (async () => {
     try {
+      await MatchaLeaderboard.ready?.();
+      if (!window.MatchaLeaderboard?.enabled()) {
+        showYou('Local only. Add shared/supabase-config.js to see other players.');
+        return;
+      }
       await MatchaLeaderboard.push(you);
       const rows = (await MatchaLeaderboard.top()) || [];
       const others = rows.filter(row => row.player_id !== you.player_id);
@@ -297,6 +297,7 @@ function setSyncStatus(text, tone = '') {
 }
 async function syncNow() {
   document.getElementById('syncCode').value = MatchaLeaderboard.playerId();
+  await MatchaLeaderboard.ready?.();
   if (!MatchaLeaderboard.enabled()) {
     setSyncStatus('Offline: progress is saved on this device only.', 'warn');
     return;

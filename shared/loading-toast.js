@@ -97,5 +97,3 @@ class LoadingToast {
 
 // Global singleton
 globalThis.LoadingToast = new LoadingToast();
-
-export default globalThis.LoadingToast;

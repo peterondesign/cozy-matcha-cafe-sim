@@ -204,5 +204,3 @@ class ProfileConnector {
 
 // Global instance
 globalThis.ProfileConnector = new ProfileConnector();
-
-export default globalThis.ProfileConnector;

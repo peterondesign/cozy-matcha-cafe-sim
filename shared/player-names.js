@@ -74,4 +74,3 @@ class PlayerNameGenerator {
 }
 
 globalThis.PlayerNameGenerator = PlayerNameGenerator;
-export default PlayerNameGenerator;
