@@ -576,7 +576,7 @@
       <button type="button" id="nextCustomer">Welcome the next customer</button>
     </div>
   </div>
-  <matcha-hud></matcha-hud><script src="../shared/loading-toast.js"></script><script src="../shared/audio-bus.js?v=2"></script><script src="../shared/world-hud.js?v=3"></script><script src="../shared/profile-connector.js"></script>
+  <matcha-hud></matcha-hud><script src="../shared/loading-toast.js"></script><script src="../shared/audio-bus.js?v=2"></script><script src="../shared/world-hud.js?v=3"></script><script src="../shared/profile-connector.js"></script><script src="../shared/leaderboard.js"></script>
   <link rel="stylesheet" href="../shared/loading-toast.css">
   <link rel="stylesheet" href="../shared/profile-connector.css">
   <div class="stock-warn" id="stockWarn" hidden>
@@ -1272,6 +1272,20 @@ function saveProgress() {
     coinsGained: Number(state.coinsGained ?? 0),
     statsHistory: history
   }));
+  
+  // Sync to cloud database if available
+  if (typeof MatchaLeaderboard !== 'undefined' && MatchaLeaderboard.enabled?.()) {
+    const audioSettings = JSON.parse(localStorage.getItem('matchaSettings') || '{}');
+    MatchaLeaderboard.push({
+      display_name: audioSettings.name || 'Player',
+      avatar: audioSettings.avatar || 1,
+      day: state.day || 1,
+      served,
+      coins,
+      gems,
+      state
+    }).catch(err => console.warn('Failed to sync to cloud:', err));
+  }
 }
 function saveCoins(amount) {
   coins += amount;
